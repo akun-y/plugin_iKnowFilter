@@ -1,0 +1,118 @@
+[
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "plugins",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "plugins",
+        "description": "plugins",
+        "detail": "plugins",
+        "documentation": {}
+    },
+    {
+        "label": "*",
+        "importPath": "plugins",
+        "description": "plugins",
+        "isExtraImport": true,
+        "detail": "plugins",
+        "documentation": {}
+    },
+    {
+        "label": "ContextType",
+        "importPath": "bridge.context",
+        "description": "bridge.context",
+        "isExtraImport": true,
+        "detail": "bridge.context",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "common.log",
+        "description": "common.log",
+        "isExtraImport": true,
+        "detail": "common.log",
+        "documentation": {}
+    },
+    {
+        "label": "check_contain",
+        "importPath": "channel.chat_channel",
+        "description": "channel.chat_channel",
+        "isExtraImport": true,
+        "detail": "channel.chat_channel",
+        "documentation": {}
+    },
+    {
+        "label": "ApiGroupx",
+        "importPath": "plugins.plugin_chat2db.api_groupx",
+        "description": "plugins.plugin_chat2db.api_groupx",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_chat2db.api_groupx",
+        "documentation": {}
+    },
+    {
+        "label": "RemarkNameInfo",
+        "importPath": "plugins.plugin_comm.remark_name_info",
+        "description": "plugins.plugin_comm.remark_name_info",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_comm.remark_name_info",
+        "documentation": {}
+    },
+    {
+        "label": "EthZero",
+        "importPath": "plugins.plugin_comm.plugin_comm",
+        "description": "plugins.plugin_comm.plugin_comm",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_comm.plugin_comm",
+        "documentation": {}
+    },
+    {
+        "label": "get_itchat_group",
+        "importPath": "plugins.plugin_comm.plugin_comm",
+        "description": "plugins.plugin_comm.plugin_comm",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_comm.plugin_comm",
+        "documentation": {}
+    },
+    {
+        "label": "get_itchat_user",
+        "importPath": "plugins.plugin_comm.plugin_comm",
+        "description": "plugins.plugin_comm.plugin_comm",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_comm.plugin_comm",
+        "documentation": {}
+    },
+    {
+        "label": "make_chat_sign_req",
+        "importPath": "plugins.plugin_comm.plugin_comm",
+        "description": "plugins.plugin_comm.plugin_comm",
+        "isExtraImport": true,
+        "detail": "plugins.plugin_comm.plugin_comm",
+        "documentation": {}
+    },
+    {
+        "label": "GroupFilter",
+        "kind": 6,
+        "importPath": "group_filter",
+        "description": "group_filter",
+        "peekOfCode": "class GroupFilter(Plugin):\n    def __init__(self):\n        super().__init__()\n        self.config = super().load_config()\n        if self.config:\n            self.filter_config = self.config.get(\"group_filter\")\n        else:\n            self.filter_config = []\n        self.group_white_list = self.filter_config.get(\"group_name_white_list\")\n        self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context",
+        "detail": "group_filter",
+        "documentation": {}
+    }
+]
