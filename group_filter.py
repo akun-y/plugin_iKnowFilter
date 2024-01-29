@@ -65,18 +65,19 @@ class GroupFilter(Plugin):
         context = e_context["context"]
         if context.type not in [ContextType.TEXT]:
             return  # 转给系统及其它插件处理
+        # 如果是扁鹊子发出的，也要转下去
         is_group = context.get("isgroup")
         if not is_group:
             return  # 转给系统及其它插件处理
 
         msg = context.get("msg")
-        if msg.is_at:
-            logger.info(f"--->群名称过滤:带at消息")
+        if msg.is_at or msg.my_msg:
+            logger.info(f"--->group filter:带at或agent发出:{msg.is_at},{msg.my_msg}")
             return  # 转给系统及其他插件
         # 无 @ 也进行处理
         group_name = msg.from_user_nickname
         if group_name not in self.group_white_list:
-            logger.info(f"--->群名称过滤:群不在白名单中 {group_name}")  # 频率非常高
+            logger.info(f"--->group filter:群不在白名单中 {group_name}")  # 频率非常高
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
