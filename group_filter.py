@@ -2,6 +2,7 @@
 
 import json
 import os
+from sys import prefix
 
 import plugins
 from bridge.context import ContextType
@@ -59,32 +60,56 @@ class GroupFilter(Plugin):
         account = rm.get_account()
         if not is_valid_string(user.NickName):
             user["NickName"] = wx_user_nickname
-        self.groupx.post_chat_record_group_not_at(account, {"agent": self.agent, "user": user, "group": group, "content": cmsg.content})
+        self.groupx.post_chat_record_group_not_at(
+            account,
+            {
+                "agent": self.agent,
+                "user": user,
+                "group": group,
+                "content": cmsg.content,
+            },
+        )
 
     def on_handle_context(self, e_context: EventContext):
         context = e_context["context"]
         if context.type not in [ContextType.TEXT]:
             return  # 转给系统及其它插件处理
-        # 如果是扁鹊子发出的，也要转下去
+        # 1- 如果是扁鹊子发出的，也要转下去
         is_group = context.get("isgroup")
         if not is_group:
             return  # 转给系统及其它插件处理
 
+        # 2- 是 @ 我，直接转给系统及其它插件处理
         msg = context.get("msg")
-        if msg.is_at or msg.my_msg:
-            logger.info(f"--->group filter:带at或agent发出:{msg.is_at},{msg.my_msg}")
+        if msg.is_at:
+            logger.info("--->group filter:@我的")
             return  # 转给系统及其他插件
-        # 无 @ 也进行处理
+
+        # 3- 是带有约定前缀的，转给系统及其它插件处理
+        prefix_array = ["$", "bot"]
+        if any(msg.content.startswith(item) for item in prefix_array):
+            return  # 转给系统及其他插件
+
+        # 4- 是机器人发出的消息， 终止处理
+        if msg.my_msg:
+            logger.info("--->group filter:我自己发出的消息")
+            e_context.action = EventAction.BREAK_PASS  # 不响应
+            return
+        # 5- 群名不在白名单中，中止处理
         group_name = msg.from_user_nickname
         if group_name not in self.group_white_list:
             logger.info(f"--->group filter:群不在白名单中 {group_name}")  # 频率非常高
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
+        # 6- 保存消息到数据库
         self._post_group_msg(msg)
 
+        # 7- 不匹配关键字，中止处理
         content = context.content
-        match_contain = check_contain(content, self.filter_config.get("group_chat_keyword"))
+        match_contain = check_contain(
+            content, self.filter_config.get("group_chat_keyword")
+        )
         if not match_contain:
             logger.info(
                 f"--->grooup filter 无关键字,中止：{content}  {group_name} {msg.actual_user_nickname}"
@@ -92,6 +117,7 @@ class GroupFilter(Plugin):
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
+        # 8- 包含关键字，转系统及其他插件处理
         logger.info(
             f"--->grooup filter 包含关键字,继续:{content} {group_name} {msg.actual_user_nickname}"
         )  # 转系统及其他插件处理

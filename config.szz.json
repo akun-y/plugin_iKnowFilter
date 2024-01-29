@@ -1,0 +1,7 @@
+{
+  "group_filter": {
+    "group_chat_prefix": ["@www", "@狮子座"],
+    "group_chat_keyword": ["喝水", "体重", "打卡", "#打卡", "#减重"],
+    "group_name_white_list": ["湘湖跑团", "杭州驰诚GLC车友会", "滨之江翼起跑", "yhk-test-szz", "kf-szz", "yhk-test", "测试群", "扁鵲子技術討論", "xu-test", "aaa"]
+  }
+}
