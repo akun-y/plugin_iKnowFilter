@@ -86,7 +86,7 @@ class GroupFilter(Plugin):
             return  # 转给系统及其他插件
 
         # 3- 是带有约定前缀的，转给系统及其它插件处理
-        prefix_array = ["$", "bot"]
+        prefix_array = ["$"] or self.filter_config.get("group_forward_keyword")
         if any(msg.content.startswith(item) for item in prefix_array):
             return  # 转给系统及其他插件
 
