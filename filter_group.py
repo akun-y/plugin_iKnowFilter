@@ -43,6 +43,8 @@ class GroupFilter(object):
         self.groupx = ApiGroupx()
         self.agent = conf().get("bot_account") or "123112312"
         self.agent_name = conf().get("bot_name")
+        self.reg_url = conf().get("iknow_reg_url")
+        self.recharge_url = conf().get("iknow_recharge_url")
 
     def before_create_image(self, e_context: EventContext):
         context = e_context["context"]
@@ -93,10 +95,10 @@ class GroupFilter(object):
             e_context.action = EventAction.BREAK_PASS
             return
         if not ret :
-            send_text_with_url(e_context, f"生成图片时消费积分异常，请点击链接登录查看。")
+            send_text_with_url(e_context, f"生成图片时消费积分失败，请点击链接登录查看。")
             e_context.action = EventAction.BREAK_PASS
         if not ret["success"] :
-            send_text_with_url(e_context, f"生成图片时积分不足，请充值。",'https://geth.mfull.cn/#/pages/recharge')
+            send_text_with_url(e_context, f"生成图片时积分不足，请充值。",self.recharge_url)
             e_context.action = EventAction.BREAK_PASS
 
     def before_handle_context(self, e_context: EventContext):
@@ -220,15 +222,15 @@ class GroupFilter(object):
                 # itchat.send_msg(msg, toUserName=to_user_id)
                 send_text_with_url(
                     e_context,
-                    f"积分不足，为不影响您正常使用，请及时充值。(积分余额: {balance})",
-                    'https://geth.mfull.cn/#/pages/recharge'
+                    f"积分不足，为不影响您正常使用，请及时充值。\n积分余额: {balance}",
+                    self.recharge_url
                 )
                 return
             logger.info(f"======>[IKnowFilter] consumeTokens success", ret)
         else:
             logger.warn(f"======>[IKnowFilter] consumeTokens fail", ret)
             # 未注册用户暂时不禁用。
-            # send_text_reg(e_context, f"积分异常，请点击链接注册。")
+            # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
             # e_context.action = EventAction.BREAK_PASS
             return
 
