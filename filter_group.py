@@ -94,11 +94,17 @@ class GroupFilter(object):
             send_reg_msg(group.UserName, user.NickName, "生成图片请先登录：")
             e_context.action = EventAction.BREAK_PASS
             return
-        if not ret :
-            send_text_with_url(e_context, f"生成图片时消费积分失败，请点击链接登录查看。")
+        if not ret:
+            send_text_with_url(
+                e_context, f"生成图片时消费积分失败，请点击链接登录查看。"
+            )
             e_context.action = EventAction.BREAK_PASS
-        if not ret["success"] :
-            send_text_with_url(e_context, f"生成图片时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})",self.recharge_url)
+        if not ret["success"]:
+            send_text_with_url(
+                e_context,
+                f"生成图片时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})",
+                self.recharge_url,
+            )
             e_context.action = EventAction.BREAK_PASS
 
     def before_handle_context(self, e_context: EventContext):
@@ -171,9 +177,13 @@ class GroupFilter(object):
         session_id = ctx.get("session_id")
         user_session = all_sessions.build_session(session_id)
 
-        completion_tokens, total_tokens = bot.calc_tokens(
-            user_session.messages, replyMsg
-        )
+        if hasattr(bot, "calc_tokens"):
+            completion_tokens, total_tokens = bot.calc_tokens(
+                user_session.messages, replyMsg
+            )
+        else:
+            completion_tokens = len(cmsg.content)
+            total_tokens = len(replyMsg) + completion_tokens
 
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
@@ -223,7 +233,7 @@ class GroupFilter(object):
                 send_text_with_url(
                     e_context,
                     f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                    self.recharge_url
+                    self.recharge_url,
                 )
                 return
             logger.info(f"======>[IKnowFilter] consumeTokens success", ret)
