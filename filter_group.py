@@ -98,7 +98,7 @@ class GroupFilter(object):
             send_text_with_url(e_context, f"生成图片时消费积分失败，请点击链接登录查看。")
             e_context.action = EventAction.BREAK_PASS
         if not ret["success"] :
-            send_text_with_url(e_context, f"生成图片时积分不足，请充值。",self.recharge_url)
+            send_text_with_url(e_context, f"生成图片时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})",self.recharge_url)
             e_context.action = EventAction.BREAK_PASS
 
     def before_handle_context(self, e_context: EventContext):
@@ -222,7 +222,7 @@ class GroupFilter(object):
                 # itchat.send_msg(msg, toUserName=to_user_id)
                 send_text_with_url(
                     e_context,
-                    f"积分不足，为不影响您正常使用，请及时充值。\n积分余额: {balance}",
+                    f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
                     self.recharge_url
                 )
                 return
