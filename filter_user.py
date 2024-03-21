@@ -149,9 +149,13 @@ class FilterUser(object):
         session_id = ctx.get("session_id")
         user_session = all_sessions.build_session(session_id)
 
-        completion_tokens, total_tokens = bot.calc_tokens(
-            user_session.messages, replyMsg
-        )
+        if hasattr(bot, "calc_tokens"):
+            completion_tokens, total_tokens = bot.calc_tokens(
+                user_session.messages, replyMsg
+            )
+        else:
+            completion_tokens = len(cmsg.content)
+            total_tokens = len(replyMsg) + completion_tokens
 
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
