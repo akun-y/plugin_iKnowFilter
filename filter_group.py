@@ -46,7 +46,12 @@ class GroupFilter(object):
         self.reg_url = conf().get("iknow_reg_url")
         self.recharge_url = conf().get("iknow_recharge_url")
 
-    def before_create_image(self, e_context: EventContext):
+    def before_operation(self, e_context: EventContext, oper_type: str):
+        oper_dict = {
+            "create_img": "生成图片",
+            "summary_file": "生成文件摘要",
+            "summary_link": "生成链接文字摘要",
+        }
         context = e_context["context"]
         cmsg = e_context["context"]["msg"]
         wx_group_id = cmsg.other_user_id
@@ -91,18 +96,20 @@ class GroupFilter(object):
                 itchat.dump_login_status()
         # 抢救失败，请去注册
         if not is_eth_address(account):
-            send_reg_msg(group.UserName, user.NickName, "生成图片请先登录：")
+            send_reg_msg(
+                group.UserName, user.NickName, f"{oper_dict[oper_type]}请先登录："
+            )
             e_context.action = EventAction.BREAK_PASS
             return
         if not ret:
             send_text_with_url(
-                e_context, f"生成图片时消费积分失败，请点击链接登录查看。"
+                e_context, f"{oper_dict[oper_type]}消费积分失败，请点击链接登录查看。"
             )
             e_context.action = EventAction.BREAK_PASS
         if not ret["success"]:
             send_text_with_url(
                 e_context,
-                f"生成图片时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})",
+                f"{oper_dict[oper_type]}积分不足，点击链接充值后继续操作。\n(余额:{ret['balanceAITokens']})",
                 self.recharge_url,
             )
             e_context.action = EventAction.BREAK_PASS
@@ -111,7 +118,13 @@ class GroupFilter(object):
         context = e_context["context"]
 
         if context.type == ContextType.IMAGE_CREATE:
-            self.before_create_image(e_context)
+            self.before_operation(e_context, "create_img")
+            return
+        if context.type == ContextType.FILE:
+            self.before_operation(e_context, "summary_file")
+            return
+        if context.type == ContextType.SHARING:
+            self.before_operation(e_context, "summary_link")
             return
 
         if context.type not in [ContextType.TEXT]:

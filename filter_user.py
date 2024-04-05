@@ -71,7 +71,13 @@ class FilterUser(object):
             f"--->grooup filter 包含关键字,继续:{content}  {msg.actual_user_nickname}"
         )  # 转系统及其他插件处理
 
-    def before_create_image(self, e_context: EventContext):
+    # 计算耗费积分后余额是否足够，当account为0，服务器会尝试自动匹配并返回account
+    def before_operation(self, e_context: EventContext, oper_type: str):
+        oper_dict = {
+            "create_img": "生成图片",
+            "summary_file": "生成文件摘要",
+            "summary_link": "生成链接文字摘要",
+        }
         context = e_context["context"]
         cmsg = e_context["context"]["msg"]
 
@@ -86,7 +92,7 @@ class FilterUser(object):
         ret = self.groupx.consumeTokens(
             account,
             {
-                "type": "create_img",
+                "type": oper_type,
                 "agent": self.agent,
                 "user": selectKeysForDict(
                     user,
@@ -114,17 +120,19 @@ class FilterUser(object):
                 itchat.dump_login_status()
         # 抢救失败，请去注册
         if not is_eth_address(account):
-            send_reg_msg(user.UserName, None, "生成图片请先登录：")
+            send_reg_msg(user.UserName, None, f"{oper_dict[oper_type]}请先登录：")
             e_context.action = EventAction.BREAK_PASS
             return
         if not ret:
             send_text_with_url(
-                e_context, f"生成图片时消费积分失败，请点击链接登录查看。"
+                e_context, f"{oper_dict[oper_type]}时消费积分失败，请点击链接登录查看。"
             )
             e_context.action = EventAction.BREAK_PASS
         if not ret["success"]:
             send_text_with_url(
-                e_context, f"生成图片时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})", self.recharge_url
+                e_context,
+                f"{oper_dict[oper_type]}时积分不足，请点击链接充值。\n(余额:{ret['balanceAITokens']})",
+                self.recharge_url,
             )
             e_context.action = EventAction.BREAK_PASS
 
@@ -132,7 +140,15 @@ class FilterUser(object):
         context = e_context["context"]
 
         if context.type == ContextType.IMAGE_CREATE:
-            self.before_create_image(e_context)
+            self.before_operation(e_context, "create_img")
+            return
+
+        if context.type == ContextType.FILE:
+            self.before_operation(e_context, "summary_file")
+            return
+
+        if context.type == ContextType.SHARING:
+            self.before_operation(e_context, "summary_link")
             return
 
     def before_send_reply(self, e_context: EventContext):
@@ -204,9 +220,9 @@ class FilterUser(object):
                     self.recharge_url,
                 )
                 return
-            logger.info(f"======>[IKnowFilter] consumeTokens success", ret)
+            logger.info(f"======>[IKnowFilter] consumeTokens success {ret}")
         else:
-            logger.warn(f"======>[IKnowFilter] consumeTokens fail", ret)
+            logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。
             # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
             # e_context.action = EventAction.BREAK_PASS
