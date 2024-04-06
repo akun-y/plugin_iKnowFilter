@@ -45,87 +45,15 @@ class GroupFilter(object):
         self.agent_name = conf().get("bot_name")
         self.reg_url = conf().get("iknow_reg_url")
         self.recharge_url = conf().get("iknow_recharge_url")
-
-    def before_operation(self, e_context: EventContext, oper_type: str):
-        oper_dict = {
+        self.oper_dict = {
             "create_img": "生成图片",
             "summary_file": "生成文件摘要",
             "summary_link": "生成链接文字摘要",
         }
-        context = e_context["context"]
-        cmsg = e_context["context"]["msg"]
-        wx_group_id = cmsg.other_user_id
-        user = get_itchat_user(user_id=find_user_id_by_ctx(context))
-        group = get_itchat_group(wx_group_id)
-        rm = RemarkNameInfo(user.RemarkName)
-        account = rm.get_account()
 
-        if not is_eth_address(account):
-            account = EthZero
-        # 计算耗费积分后余额是否足够，当account为0，服务器会尝试自动匹配并返回account
-        ret = self.groupx.consumeTokens(
-            account,
-            {
-                "type": "create_img",
-                "agent": self.agent,
-                "user": selectKeysForDict(
-                    user,
-                    "NickName",
-                    "UserName",
-                    "RemarkName",
-                    "Sex",
-                    "Province",
-                    "City",
-                ),
-                "group": selectKeysForDict(
-                    group, "NickName", "UserName", "RemarkName", "DisplayName"
-                ),
-                "total_tokens": 500,
-                "completion_tokens": 100,
-                # 只计算，不执行
-                "exe": False,
-            },
-        )
-        # 抢救成功？服务器返回account
-        if not is_eth_address(account) and ret and ret["success"]:
-            account = ret["account"]
-            if is_eth_address(account):
-                rm.set_account(account)
-                itchat.set_alias(user.UserName, rm.get_remark_name())
-                user.update()
-                itchat.dump_login_status()
-        # 抢救失败，请去注册
-        if not is_eth_address(account):
-            send_reg_msg(
-                group.UserName, user.NickName, f"{oper_dict[oper_type]}请先登录："
-            )
-            e_context.action = EventAction.BREAK_PASS
-            return
-        if not ret:
-            send_text_with_url(
-                e_context, f"{oper_dict[oper_type]}消费积分失败，请点击链接登录查看。"
-            )
-            e_context.action = EventAction.BREAK_PASS
-        if not ret["success"]:
-            send_text_with_url(
-                e_context,
-                f"{oper_dict[oper_type]}积分不足，点击链接充值后继续操作。\n(余额:{ret['balanceAITokens']})",
-                self.recharge_url,
-            )
-            e_context.action = EventAction.BREAK_PASS
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
-
-        if context.type == ContextType.IMAGE_CREATE:
-            self.before_operation(e_context, "create_img")
-            return
-        if context.type == ContextType.FILE:
-            self.before_operation(e_context, "summary_file")
-            return
-        if context.type == ContextType.SHARING:
-            self.before_operation(e_context, "summary_link")
-            return
 
         if context.type not in [ContextType.TEXT]:
             return  # 转给系统及其它插件处理
@@ -152,9 +80,12 @@ class GroupFilter(object):
         # 5- 群名不在白名单中，中止处理
         group_name = msg.from_user_nickname
         if group_name not in self.group_white_list:
-            logger.info(f"--->group filter:群不在白名单中 {group_name}")  # 频率非常高
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
+
+        logger.info(
+            f"[iKnowFilter] --->group filter:群在白名单中,继续处理 {group_name}"
+        )  # 频率非常高
 
         # 6- 保存消息到数据库
         self._post_group_msg(msg)
