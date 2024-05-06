@@ -163,6 +163,7 @@ class GroupFilter(object):
             },
         )
         if ret:
+            
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
                 rm.set_account(ret["account"])
@@ -171,7 +172,7 @@ class GroupFilter(object):
                 itchat.dump_login_status()
 
             balance = ret["balanceAITokens"]
-            if balance < -3000 or ret["success"] is False:
+            if ret["success"] is False:  # 注册用户充值提醒
                 logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
                 # itchat.send_msg(msg, toUserName=to_user_id)
                 send_text_with_url(
