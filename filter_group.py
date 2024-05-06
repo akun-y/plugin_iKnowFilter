@@ -51,7 +51,6 @@ class GroupFilter(object):
             "summary_link": "生成链接文字摘要",
         }
 
-
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
 
@@ -163,7 +162,6 @@ class GroupFilter(object):
             },
         )
         if ret:
-            
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
                 rm.set_account(ret["account"])
@@ -172,14 +170,15 @@ class GroupFilter(object):
                 itchat.dump_login_status()
 
             balance = ret["balanceAITokens"]
-            if ret["success"] is False:  # 注册用户充值提醒
+            if ret["success"] is False:
                 logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
                 # itchat.send_msg(msg, toUserName=to_user_id)
-                send_text_with_url(
-                    e_context,
-                    f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                    self.recharge_url,
-                )
+                #    send_text_with_url(
+                #        e_context,
+                #        f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
+                #        self.recharge_url,
+                #    )
+
                 return
             logger.info(f"======>[IKnowFilter] consumeTokens success", ret)
         else:
