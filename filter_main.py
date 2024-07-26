@@ -13,7 +13,7 @@ from plugins.plugin_iKnowFilter.filter_user import FilterUser
     desire_priority=999,
     hidden=False,
     desc="群白名单过滤",
-    version="0.2.6",
+    version="0.2.7",
     author="akun.yunqi",
 )
 class IKnowFilter(Plugin):

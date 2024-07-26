@@ -83,78 +83,81 @@ class FilterUser(object):
 
 
     def before_send_reply(self, e_context: EventContext):
-        if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
-            return
-
-        ctx = e_context["context"]
-        reply = e_context["reply"]
-        cmsg = e_context["context"]["msg"]
-
-        replyMsg = reply.content
-        bot = Bridge().get_bot("chat")
-        all_sessions = bot.sessions
-        session_id = ctx.get("session_id")
-        user_session = all_sessions.build_session(session_id)
-
-        if hasattr(bot, "calc_tokens"):
-            completion_tokens, total_tokens = bot.calc_tokens(
-                user_session.messages, replyMsg
-            )
-        else:
-            completion_tokens = len(cmsg.content)
-            total_tokens = len(replyMsg) + completion_tokens
-
-        wx_user_id = cmsg.from_user_id
-        wx_user_nickname = cmsg.from_user_nickname
-        user = get_itchat_user(wx_user_id)
-
-        rm = RemarkNameInfo(user.RemarkName)
-        account = rm.get_account()
-        if not is_valid_string(user.NickName):
-            user["NickName"] = wx_user_nickname
-        if not is_eth_address(account):
-            account = EthZero
-        ret = self.groupx.consumeTokens(
-            account,
-            {
-                "type": "text",
-                "agent": self.agent,
-                "user": selectKeysForDict(
-                    user,
-                    "NickName",
-                    "UserName",
-                    "RemarkName",
-                    "Sex",
-                    "Province",
-                    "City",
-                ),
-                "group": None,
-                "total_tokens": total_tokens,
-                "completion_tokens": completion_tokens,
-            },
-        )
-        if ret:
-            # 写入服务器返回的account到user remarkname中
-            if is_eth_address(ret["account"]) and account != ret["account"]:
-                rm.set_account(ret["account"])
-                itchat.set_alias(user.UserName, rm.get_remark_name())
-                user.update()
-                itchat.dump_login_status()
-
-            balance = ret["balanceAITokens"]
-            if balance < -3000 or ret["success"] is False:
-                logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
-                # itchat.send_msg(msg, toUserName=to_user_id)
-                send_text_with_url(
-                    e_context,
-                    f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                    self.recharge_url,
-                )
+        try:
+            if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
                 return
-            logger.info(f"======>[IKnowFilter] consumeTokens success {ret}")
-        else:
-            logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
-            # 未注册用户暂时不禁用。
-            # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
-            # e_context.action = EventAction.BREAK_PASS
-            return
+
+            ctx = e_context["context"]
+            reply = e_context["reply"]
+            cmsg = e_context["context"]["msg"]
+
+            replyMsg = reply.content
+            bot = Bridge().get_bot("chat")
+            all_sessions = bot.sessions
+            session_id = ctx.get("session_id")
+            user_session = all_sessions.build_session(session_id)
+
+            if hasattr(bot, "calc_tokens"):
+                completion_tokens, total_tokens = bot.calc_tokens(
+                    user_session.messages, replyMsg
+                )
+            else:
+                completion_tokens = len(cmsg.content)
+                total_tokens = len(replyMsg) + completion_tokens
+
+            wx_user_id = cmsg.from_user_id
+            wx_user_nickname = cmsg.from_user_nickname
+            user = get_itchat_user(wx_user_id,wx_user_nickname)
+
+            rm = RemarkNameInfo(user.RemarkName)
+            account = rm.get_account()
+            if not is_valid_string(user.NickName):
+                user["NickName"] = wx_user_nickname
+            if not is_eth_address(account):
+                account = EthZero
+            ret = self.groupx.consumeTokens(
+                account,
+                {
+                    "type": "text",
+                    "agent": self.agent,
+                    "user": selectKeysForDict(
+                        user,
+                        "NickName",
+                        "UserName",
+                        "RemarkName",
+                        "Sex",
+                        "Province",
+                        "City",
+                    ),
+                    "group": None,
+                    "total_tokens": total_tokens,
+                    "completion_tokens": completion_tokens,
+                },
+            )
+            if ret:
+                # 写入服务器返回的account到user remarkname中
+                if is_eth_address(ret["account"]) and account != ret["account"]:
+                    rm.set_account(ret["account"])
+                    itchat.set_alias(user.UserName, rm.get_remark_name())
+                    user.update()
+                    itchat.dump_login_status()
+
+                balance = ret["balanceAITokens"]
+                if balance < -3000 or ret["success"] is False:
+                    logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
+                    # itchat.send_msg(msg, toUserName=to_user_id)
+                    send_text_with_url(
+                        e_context,
+                        f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
+                        self.recharge_url,
+                    )
+                    return
+                logger.info(f"======>[IKnowFilter] consumeTokens success {ret}")
+            else:
+                logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
+                # 未注册用户暂时不禁用。
+                # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
+                # e_context.action = EventAction.BREAK_PASS
+                return
+        except Exception as e:
+            logger.error(f"======>[IKnowFilter] consumeTokens error {e}")

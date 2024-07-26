@@ -131,7 +131,7 @@ class GroupFilter(object):
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
         wx_group_id = cmsg.other_user_id
-        user = get_itchat_user(wx_user_id)
+        user = get_itchat_user(wx_user_id,wx_user_nickname)
         group = get_itchat_group(wx_group_id)
 
         rm = RemarkNameInfo(user.RemarkName)
