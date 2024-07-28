@@ -6,19 +6,19 @@ from sys import prefix
 
 from bridge.bridge import Bridge
 from bridge.reply import ReplyType
-from lib import itchat
+
+# from lib import itchat
 import plugins
 from bridge.context import ContextType
 from common.log import logger
 from plugins import *
 from channel.chat_channel import check_contain, check_prefix
-from plugins.plugin_chat2db.api_groupx import ApiGroupx
-from plugins.plugin_comm.remark_name_info import RemarkNameInfo
+from plugins.plugin_comm.api.api_groupx import ApiGroupx
+
+# from plugins.plugin_comm.remark_name_info import RemarkNameInfo
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
     find_user_id_by_ctx,
-    get_itchat_group,
-    get_itchat_user,
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,
@@ -36,7 +36,7 @@ class GroupFilter(object):
         if self.config:
             self.filter_config = self.config.get("group_filter")
         else:
-            self.filter_config = []
+            self.filter_config = {"group_name_white_list": []}
 
         self.group_white_list = self.filter_config.get("group_name_white_list")
 
@@ -77,7 +77,7 @@ class GroupFilter(object):
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
         # 5- 群名不在白名单中，中止处理
-        group_name = msg.from_user_nickname
+        group_name = msg.other_user_nickname or msg.from_user_nickname
         if group_name not in self.group_white_list:
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
@@ -131,12 +131,23 @@ class GroupFilter(object):
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
         wx_group_id = cmsg.other_user_id
-        user = get_itchat_user(wx_user_id)
-        group = get_itchat_group(wx_group_id)
+        wx_group_nickname = cmsg.other_user_nickname
+        user = {
+            "wxid": cmsg.actual_user_id if cmsg.scf else None,
+            "UserName": wx_user_id,
+            "NickName": wx_user_nickname,
+            "RemarkName": "",
+        }  # get_itchat_user(wx_user_id)
+        group = {
+            "wxid": cmsg.other_user_id if cmsg.scf else None,
+            "UserName": wx_group_id,
+            "NickName": wx_group_nickname,
+            "RemarkName": "",
+        }  # get_itchat_group(wx_group_id)
 
-        rm = RemarkNameInfo(user.RemarkName)
-        account = rm.get_account()
-        if not is_valid_string(user.NickName):
+        # rm = RemarkNameInfo(user.RemarkName)
+        account = ""  # rm.get_account()
+        if not is_valid_string(user.get("NickName", None)):
             user["NickName"] = wx_user_nickname
         if not is_eth_address(account):
             account = EthZero
@@ -147,6 +158,7 @@ class GroupFilter(object):
                 "agent": self.agent,
                 "user": selectKeysForDict(
                     user,
+                    "wxid",
                     "NickName",
                     "UserName",
                     "RemarkName",
@@ -155,19 +167,21 @@ class GroupFilter(object):
                     "City",
                 ),
                 "group": selectKeysForDict(
-                    group, "NickName", "UserName", "RemarkName", "DisplayName"
+                    group, "wxid", "NickName", "UserName", "RemarkName", "DisplayName"
                 ),
                 "total_tokens": total_tokens,
                 "completion_tokens": completion_tokens,
+                "source": "wcferry" if cmsg.scf else "",
             },
         )
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
-                rm.set_account(ret["account"])
-                itchat.set_alias(user.UserName, rm.get_remark_name())
-                user.update()
-                itchat.dump_login_status()
+                pass
+                # rm.set_account(ret["account"])
+                # itchat.set_alias(user.UserName, rm.get_remark_name())
+                # user.update()
+                # itchat.dump_login_status()
 
             balance = ret["balanceAITokens"]
             if ret["success"] is False:
@@ -192,12 +206,21 @@ class GroupFilter(object):
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
         wx_group_id = cmsg.other_user_id
-        user = get_itchat_user(wx_user_id)
-        group = get_itchat_group(wx_group_id)
+        wx_group_nickname = cmsg.other_user_nickname
+        user = {
+            "UserName": wx_user_id,
+            "NickName": wx_user_nickname,
+            "RemarkName": "",
+        }  # get_itchat_user(wx_user_id)
+        group = {
+            "UserName": wx_group_id,
+            "NickName": wx_group_nickname,
+            "RemarkName": "",
+        }  # get_itchat_group(wx_group_id)
 
-        rm = RemarkNameInfo(user.RemarkName)
-        account = rm.get_account()
-        if not is_valid_string(user.NickName):
+        # rm = RemarkNameInfo(user.RemarkName)
+        account = ""  # rm.get_account()
+        if not is_valid_string(user["NickName"]):
             user["NickName"] = wx_user_nickname
         self.groupx.post_chat_record_group_not_at(
             account,
@@ -206,5 +229,6 @@ class GroupFilter(object):
                 "user": user,
                 "group": group,
                 "content": cmsg.content,
+                "source": "wcferry" if cmsg.scf else "",
             },
         )

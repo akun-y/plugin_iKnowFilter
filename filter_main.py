@@ -27,6 +27,7 @@ class IKnowFilter(Plugin):
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
 
+
         logger.info(f"======>[IKnowFilter] inited")
 
     def get_help_text(self, **kwargs):

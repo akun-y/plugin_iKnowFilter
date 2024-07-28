@@ -6,19 +6,18 @@ from sys import prefix
 
 from bridge.bridge import Bridge
 from bridge.reply import ReplyType
-from lib import itchat
+
+# from lib import itchat
 import plugins
 from bridge.context import ContextType
 from common.log import logger
 from plugins import *
 from channel.chat_channel import check_contain
-from plugins.plugin_chat2db.api_groupx import ApiGroupx
-from plugins.plugin_comm.remark_name_info import RemarkNameInfo
+from plugins.plugin_comm.api.api_groupx import ApiGroupx
+# from plugins.plugin_comm.remark_name_info import RemarkNameInfo
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
     find_user_id_by_ctx,
-    get_itchat_group,
-    get_itchat_user,
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,
@@ -76,11 +75,8 @@ class FilterUser(object):
             f"--->grooup filter 包含关键字,继续:{content}  {msg.actual_user_nickname}"
         )  # 转系统及其他插件处理
 
-
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
-
-
 
     def before_send_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
@@ -106,11 +102,17 @@ class FilterUser(object):
 
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
-        user = get_itchat_user(wx_user_id)
+        user = {
+            "wxid": cmsg.actual_user_id if cmsg.scf else None,
+            "UserName": wx_user_id,
+            "NickName": wx_user_nickname,
+            "RemarkName": "",
+        } #get_itchat_user(wx_user_id)
 
-        rm = RemarkNameInfo(user.RemarkName)
-        account = rm.get_account()
-        if not is_valid_string(user.NickName):
+        # rm = RemarkNameInfo(user.RemarkName)
+        # account = rm.get_account()
+        account = None
+        if not is_valid_string(user["NickName"]):
             user["NickName"] = wx_user_nickname
         if not is_eth_address(account):
             account = EthZero
@@ -136,10 +138,11 @@ class FilterUser(object):
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
-                rm.set_account(ret["account"])
-                itchat.set_alias(user.UserName, rm.get_remark_name())
-                user.update()
-                itchat.dump_login_status()
+                pass
+                # rm.set_account(ret["account"])
+                # itchat.set_alias(user.UserName, rm.get_remark_name())
+                # user.update()
+                # itchat.dump_login_status()
 
             balance = ret["balanceAITokens"]
             if balance < -3000 or ret["success"] is False:
