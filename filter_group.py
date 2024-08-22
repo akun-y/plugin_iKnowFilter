@@ -50,25 +50,30 @@ class GroupFilter(object):
             "summary_file": "生成文件摘要",
             "summary_link": "生成链接文字摘要",
         }
+        # 约定前缀的，转给系统及其它插件处理
+        self.prefix_array = self.filter_config.get("group_forward_prefix") or []
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
 
-        if context.type not in [ContextType.TEXT]:
-            return  # 转给系统及其它插件处理
+        # if context.type not in [
+        #     ContextType.TEXT,
+        #     ContextType.IMAGE,
+        #     ContextType.FILE,
+        #     ContextType.VIDEO,
+        #     ContextType.VOICE,
+        #     ContextType.EMOJI,
+        #     ContextType.PATPAT,
+        #     ContextType.JOIN_GROUP,
+        # ]:
+        #     return  # 转给系统及其它插件处理
 
         content = context.content
-        # 2- 是 @ 我，直接转给系统及其它插件处理
         msg = context.get("msg")
-        if msg.is_at:
-            logger.info("--->group filter:@我的")
-            return  # 转给系统及其他插件
 
         # 3- 是带有约定前缀的，转给系统及其它插件处理
-        prefix_array = ["￥", "$", "aa#", "#"] or self.filter_config.get(
-            "group_forward_prefix"
-        )
-        if any(msg.content.startswith(item) for item in prefix_array):
+        if any(msg.content.startswith(item) for item in self.prefix_array):
+            logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
             return  # 转给系统及其他插件
 
         # 4- 是机器人发出的消息， 终止处理
@@ -82,13 +87,18 @@ class GroupFilter(object):
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
-        logger.info(
-            f"[iKnowFilter] --->group filter:群在白名单中,继续处理 {group_name}"
-        )  # 频率非常高
+        # logger.info(f"[iKnowFilter]群在白名单中,继续处理 {group_name}")  # 频率非常高
 
         # 6- 保存消息到数据库
-        self._post_group_msg(msg)
+        ret = self._post_group_msg(msg)
 
+        # 非文字内容,只记录不处理
+        if context.type not in [ContextType.TEXT]:  # 转给其他插件处理
+            return
+        #  是 @ 我，记录,转给系统及其它插件处理
+        if msg.is_at:
+            logger.info("===>@我的")
+            return  # 转给系统及其他插件
         # 7- 不匹配关键字，中止处理
         content = context.content
         match_contain = check_contain(
@@ -96,18 +106,20 @@ class GroupFilter(object):
         )
         if not match_contain:
             logger.info(
-                f"--->grooup filter 无关键字,中止：{content}  {group_name} {msg.actual_user_nickname}"
+                f'无关键字,中止{content}-"{group_name}"="{msg.actual_user_nickname}"'
             )
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
         # 8- 包含关键字，转系统及其他插件处理
+        # 注意:其他插件如果不处理,会被大模型处理
         logger.info(
-            f"--->grooup filter 包含关键字,继续:{content} {group_name} {msg.actual_user_nickname}"
+            f'========>包含关键字,继续:{content}-"{group_name}"="{msg.actual_user_nickname}"'
         )  # 转系统及其他插件处理
 
     def before_send_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
+            logger.warn("======>应答:非文字内容")
             return
 
         ctx = e_context["context"]
@@ -132,6 +144,9 @@ class GroupFilter(object):
         wx_user_nickname = cmsg.actual_user_nickname
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
+
+        logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
+
         user = {
             "wxid": cmsg.actual_user_id if cmsg.scf else None,
             "UserName": wx_user_id,
@@ -194,17 +209,18 @@ class GroupFilter(object):
                 #    )
 
                 return
-            logger.info(f"======>[IKnowFilter] consumeTokens success", ret)
+            logger.info(f"======>[IKnowFilter] consumeTokens successl {ret}")
         else:
-            logger.warn(f"======>[IKnowFilter] consumeTokens fail", ret)
+            logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。
             # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
             # e_context.action = EventAction.BREAK_PASS
             return
 
     def _post_group_msg(self, cmsg):
-        wx_user_id = cmsg.actual_user_id
-        wx_user_nickname = cmsg.actual_user_nickname
+        wx_user_id = cmsg.actual_user_id or cmsg.from_user_id
+        wx_user_nickname = cmsg.actual_user_nickname or cmsg.from_user_nickname
+
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
         user = {
@@ -222,13 +238,20 @@ class GroupFilter(object):
         account = ""  # rm.get_account()
         if not is_valid_string(user["NickName"]):
             user["NickName"] = wx_user_nickname
-        self.groupx.post_chat_record_group_not_at(
+        return self.groupx.post_chat_record_group_not_at(
             account,
             {
                 "agent": self.agent,
                 "user": user,
                 "group": group,
                 "content": cmsg.content,
+                "type": cmsg.ctype.name,
+                "is_at": cmsg.is_at,
+                "is_group": cmsg.is_group,
+                "time": cmsg.create_time,
+                "msgid": cmsg.msg_id,
+                "thumb": cmsg._rawmsg.thumb if cmsg._rawmsg.thumb else "",
+                "extra": cmsg._rawmsg.extra if cmsg._rawmsg.extra else "",
                 "source": "wcferry" if cmsg.scf else "",
             },
         )

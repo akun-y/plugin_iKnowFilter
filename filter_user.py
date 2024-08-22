@@ -65,7 +65,7 @@ class FilterUser(object):
         match_contain = check_contain(content, self.config.get("group_chat_keyword"))
         if not match_contain:
             logger.info(
-                f"--->grooup filter 无关键字,中止：{content}  {msg.actual_user_nickname}"
+                f"私聊,无关键字,中止：{content}  {msg.actual_user_nickname}"
             )
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
