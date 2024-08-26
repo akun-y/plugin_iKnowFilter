@@ -55,19 +55,7 @@ class GroupFilter(object):
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
-
-        # if context.type not in [
-        #     ContextType.TEXT,
-        #     ContextType.IMAGE,
-        #     ContextType.FILE,
-        #     ContextType.VIDEO,
-        #     ContextType.VOICE,
-        #     ContextType.EMOJI,
-        #     ContextType.PATPAT,
-        #     ContextType.JOIN_GROUP,
-        # ]:
-        #     return  # 转给系统及其它插件处理
-
+        
         content = context.content
         msg = context.get("msg")
 
@@ -81,16 +69,17 @@ class GroupFilter(object):
             logger.info("--->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
-        # 5- 群名不在白名单中，中止处理
+
+        # 5- 保存消息到数据库
+        ret = self._post_group_msg(msg)
+
+        # 6- 群名不在白名单中，中止处理
         group_name = msg.other_user_nickname or msg.from_user_nickname
         if group_name not in self.group_white_list:
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
         # logger.info(f"[iKnowFilter]群在白名单中,继续处理 {group_name}")  # 频率非常高
-
-        # 6- 保存消息到数据库
-        ret = self._post_group_msg(msg)
 
         # 非文字内容,只记录不处理
         if context.type not in [ContextType.TEXT]:  # 转给其他插件处理
@@ -106,7 +95,7 @@ class GroupFilter(object):
         )
         if not match_contain:
             logger.info(
-                f'无关键字,中止{content}-"{group_name}"="{msg.actual_user_nickname}"'
+                f'无关键字:{content}-"{group_name}"="{msg.actual_user_nickname}"'
             )
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
@@ -236,8 +225,6 @@ class GroupFilter(object):
 
         # rm = RemarkNameInfo(user.RemarkName)
         account = ""  # rm.get_account()
-        if not is_valid_string(user["NickName"]):
-            user["NickName"] = wx_user_nickname
         return self.groupx.post_chat_record_group_not_at(
             account,
             {
