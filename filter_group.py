@@ -43,6 +43,7 @@ class GroupFilter(object):
         self.groupx = ApiGroupx()
         self.agent = conf().get("bot_account") or "123112312"
         self.agent_name = conf().get("bot_name")
+        self.system_name = conf().get("system_name")
         self.reg_url = conf().get("iknow_reg_url")
         self.recharge_url = conf().get("iknow_recharge_url")
         self.oper_dict = {
@@ -55,7 +56,7 @@ class GroupFilter(object):
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
-        
+
         content = context.content
         msg = context.get("msg")
 
@@ -73,6 +74,7 @@ class GroupFilter(object):
         # 5- 保存消息到数据库
         ret = self._post_group_msg(msg)
 
+        logger.info(f"======>保存消息到groupx {ret}")
         # 6- 群名不在白名单中，中止处理
         group_name = msg.other_user_nickname or msg.from_user_nickname
         if group_name not in self.group_white_list:
@@ -240,5 +242,6 @@ class GroupFilter(object):
                 "thumb": cmsg._rawmsg.thumb if cmsg._rawmsg.thumb else "",
                 "extra": cmsg._rawmsg.extra if cmsg._rawmsg.extra else "",
                 "source": "wcferry" if cmsg.scf else "",
+                "system_name": self.system_name,
             },
         )
