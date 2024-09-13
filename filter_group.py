@@ -85,10 +85,15 @@ class GroupFilter(object):
         logger.info(
             f"[iKnowFilter] --->group filter:群在白名单中,继续处理 {group_name}"
         )  # 频率非常高
-
+        
         # 6- 保存消息到数据库
         self._post_group_msg(msg)
-
+        # 无关键字也继续派发给其他插件处理
+        if group_name in self.filter_config.get("group_chat_keyword_ignore"):
+            logger.info(
+                f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
+            )  # 频率非常高
+            return # 转给系统及其他插件
         # 7- 不匹配关键字，中止处理
         content = context.content
         match_contain = check_contain(
@@ -112,7 +117,7 @@ class GroupFilter(object):
 
         ctx = e_context["context"]
         reply = e_context["reply"]
-        cmsg = e_context["context"]["msg"]
+        msg = e_context["context"]["msg"]
 
         replyMsg = reply.content
         bot = Bridge().get_bot("chat")
@@ -125,13 +130,13 @@ class GroupFilter(object):
                 user_session.messages, replyMsg
             )
         else:
-            completion_tokens = len(cmsg.content)
+            completion_tokens = len(msg.content)
             total_tokens = len(replyMsg) + completion_tokens
 
-        wx_user_id = cmsg.actual_user_id
-        wx_user_nickname = cmsg.actual_user_nickname
-        wx_group_id = cmsg.other_user_id
-        user = get_itchat_user(wx_user_id,wx_user_nickname)
+        wx_user_id = msg.actual_user_id
+        wx_user_nickname = msg.actual_user_nickname
+        wx_group_id = msg.other_user_id
+        user = get_itchat_user(wx_user_id)
         group = get_itchat_group(wx_group_id)
 
         rm = RemarkNameInfo(user.RemarkName)
