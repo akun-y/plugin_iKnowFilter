@@ -75,8 +75,15 @@ class GroupFilter(object):
         ret = self._post_group_msg(msg)
 
         logger.info(f"======>保存消息到groupx {ret}")
-        # 6- 群名不在白名单中，中止处理
         group_name = msg.other_user_nickname or msg.from_user_nickname
+        # 无关键字也继续派发给其他插件处理
+        if group_name in self.filter_config.get("group_chat_keyword_ignore"):
+            logger.info(
+                f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
+            )  # 频率非常高
+            return # 转给系统及其他插件
+        # 6- 群名不在白名单中，中止处理
+        
         if group_name not in self.group_white_list:
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
@@ -90,6 +97,7 @@ class GroupFilter(object):
         if msg.is_at:
             logger.info("===>@我的")
             return  # 转给系统及其他插件
+            
         # 7- 不匹配关键字，中止处理
         content = context.content
         match_contain = check_contain(
