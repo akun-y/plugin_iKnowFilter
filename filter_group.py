@@ -23,7 +23,6 @@ from plugins.plugin_comm.plugin_comm import (
     is_valid_string,
     make_chat_sign_req,
     selectKeysForDict,
-    send_info,
     send_reg_msg,
     send_text_with_url,
 )
