@@ -34,10 +34,14 @@ class GroupFilter(object):
         self.config = config
         if self.config:
             self.filter_config = self.config.get("group_filter")
+
         else:
             self.filter_config = {"group_name_white_list": []}
 
-        self.group_white_list = self.filter_config.get("group_name_white_list")
+        self.group_white_list = self.filter_config.get("group_name_white_list", [])
+        self.group_chat_keyword_ignore = self.filter_config.get(
+            "group_chat_keyword_ignore", []
+        )
 
         self.groupx = ApiGroupx()
         self.agent = conf().get("bot_account") or "123112312"
@@ -66,23 +70,23 @@ class GroupFilter(object):
 
         # 4- 是机器人发出的消息， 终止处理
         if msg.my_msg:
-            logger.info("--->group filter:我自己发出的消息")
+            logger.warning("--->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
 
         # 5- 保存消息到数据库
         ret = self._post_group_msg(msg)
 
-        logger.info(f"======>保存消息到groupx {ret}")
         group_name = msg.other_user_nickname or msg.from_user_nickname
+        logger.info(f"======>保存消息到groupx {ret} - {group_name}")
         # 无关键字也继续派发给其他插件处理
-        if group_name in self.filter_config.get("group_chat_keyword_ignore"):
+        if group_name in self.group_chat_keyword_ignore:
             logger.info(
                 f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
             )  # 频率非常高
-            return # 转给系统及其他插件
+            return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
-        
+
         if group_name not in self.group_white_list:
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
@@ -96,7 +100,7 @@ class GroupFilter(object):
         if msg.is_at:
             logger.info("===>@我的")
             return  # 转给系统及其他插件
-            
+
         # 7- 不匹配关键字，中止处理
         content = context.content
         match_contain = check_contain(
@@ -115,7 +119,7 @@ class GroupFilter(object):
             f'========>包含关键字,继续:{content}-"{group_name}"="{msg.actual_user_nickname}"'
         )  # 转系统及其他插件处理
 
-    def before_send_reply(self, e_context: EventContext):
+    def before_send_reply(self, e_context: EventContext, contacts_groupx):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
             logger.warn("======>应答:非文字内容")
             return
@@ -138,26 +142,37 @@ class GroupFilter(object):
             completion_tokens = len(cmsg.content)
             total_tokens = len(replyMsg) + completion_tokens
 
+        # 用户
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
-        wx_group_id = cmsg.other_user_id
-        wx_group_nickname = cmsg.other_user_nickname
-
-        logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
-
+        user_object_id = contacts_groupx.get(wx_user_id).get("objectId")
+        wx_user_alias = contacts_groupx.get(wx_user_id).get("alias")
+        wx_user_account = contacts_groupx.get(wx_user_id).get("account")
         user = {
-            "wxid": cmsg.actual_user_id if cmsg.scf else None,
+            "wxid": wx_user_id,
             "UserName": wx_user_id,
             "NickName": wx_user_nickname,
-            "RemarkName": "",
-        }  # get_itchat_user(wx_user_id)
+            "objectId": user_object_id,
+            "alias": wx_user_alias,
+            "account": wx_user_account,
+        }
+
+        # 群
+        wx_group_id = cmsg.other_user_id
+        wx_group_nickname = cmsg.other_user_nickname
+        group_object_id = contacts_groupx.get(wx_group_id).get("objectId")
+        wx_group_alias = contacts_groupx.get(wx_group_id).get("alias")
+
         group = {
-            "wxid": cmsg.other_user_id if cmsg.scf else None,
+            "wxid": wx_group_id,
             "UserName": wx_group_id,
             "NickName": wx_group_nickname,
             "RemarkName": "",
+            "objectId": group_object_id,
+            "alias": wx_group_alias,
         }  # get_itchat_group(wx_group_id)
 
+        logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
         # rm = RemarkNameInfo(user.RemarkName)
         account = ""  # rm.get_account()
         if not is_valid_string(user.get("NickName", None)):
@@ -178,12 +193,22 @@ class GroupFilter(object):
                     "Sex",
                     "Province",
                     "City",
+                    "objectId",
+                    "alias","account"
                 ),
                 "group": selectKeysForDict(
-                    group, "wxid", "NickName", "UserName", "RemarkName", "DisplayName"
+                    group,
+                    "wxid",
+                    "NickName",
+                    "UserName",
+                    "RemarkName",
+                    "DisplayName",
+                    "objectId",
+                    "alias",
                 ),
                 "total_tokens": total_tokens,
                 "completion_tokens": completion_tokens,
+                "reply_text":replyMsg,
                 "source": "wcferry" if cmsg.scf else "",
             },
         )

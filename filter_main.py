@@ -1,11 +1,14 @@
 # encoding:utf-8
 
 import time
+from typing import Dict
 from bridge.bridge import Bridge
 from channel import channel_factory
+from config import get_root
 import plugins
 from common.log import logger
 from plugins import *
+from plugins.plugin_comm.json_file import load_json_from_file
 from plugins.plugin_iKnowFilter.filter_group import GroupFilter
 from plugins.plugin_iKnowFilter.filter_user import FilterUser
 
@@ -33,6 +36,10 @@ class IKnowFilter(Plugin):
 
         self.refresh_global_config()
 
+        self.directory = os.path.join(get_root(), "tmp")
+        self.contacts_groupx = (
+            load_json_from_file(self.directory, "groupx_contacts.json") or {}
+        )
         logger.info(f"======>[IKnowFilter] inited")
 
     def get_help_text(self, **kwargs):
@@ -42,15 +49,15 @@ class IKnowFilter(Plugin):
         ctx = e_context["context"]
         is_group = ctx.get("isgroup", False)
         if is_group:
-            self.filter_group.before_send_reply(e_context)
+            self.filter_group.before_send_reply(e_context,self.contacts_groupx)
             return
-        self.filter_user.before_send_reply(e_context)
+        self.filter_user.before_send_reply(e_context,self.contacts_groupx)
 
     def on_handle_context(self, e_context: EventContext):
         context = e_context["context"]
         is_group = context.get("isgroup")
         if is_group:  
-            self.filter_group.before_handle_context(e_context)
+            self.filter_group.before_handle_context(e_context,)
             return
         self.filter_user.before_handle_context(e_context)
 

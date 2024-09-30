@@ -1,0 +1,117 @@
+{
+  "group_filter": {
+    "group_chat_prefix": [
+      "@www",
+      "@狮子座"
+    ],
+    "group_chat_keyword": [
+      "今日单词"
+    ],
+    "group_chat_keyword2": [
+      "#打卡",
+      "#减重"
+    ],
+    "group_forward_prefix": [
+      "发音 ",
+      "￥￥",
+      "#$",
+      "aa#",
+      "##"
+    ],
+    "group_name_white_list": [
+      "iknowFilter内部再次过滤",
+      "BOT-AKUN",
+      "wangxd_szz",
+      "yhk-test-szz",
+      "yhk-test-szz2",
+      "kf-szz",
+      "yhk-test",
+      "测试群",
+      "xu-test",
+      "aaa",
+      "tt",
+      "tt2",
+      "yhk-test6",
+      "wcf&cow",
+      "学习资料保存群",
+      "yhk- AI",
+      "yhk- 体锻",
+      "yhk-test6",
+      "扁鹊子企微测试群2",
+      "忆青春"
+    ],
+    "group_chat_keyword_ignore": [
+      "BOT-AKUN",
+      "wangxd_szz",
+      "yhk-test-szz"
+    ],
+    "group_name_white_list2": [
+      "iknowFilter内部再次过滤",
+      "BOT-AKUN",
+      "wangxd_szz",
+      "yhk-test-szz",
+      "yhk-test-szz2",
+      "kf-szz",
+      "yhk-test",
+      "tt2232",
+      "xu-test",
+      "xu-test2",
+      "xu-test3",
+      "xu-test6",
+      "Qqq",
+      "测试群",
+      "xu-test",
+      "aaa",
+      "tt",
+      "tt2",
+      "yhk-test6",
+      "wcf&cow",
+      "学习资料保存群",
+      "yhk- AI",
+      "yhk- 体锻",
+      "WeChatFerry羊",
+      "yhk-test6",
+      "扁鹊子企微测试群2",
+      "忆青春",
+      "袁氏家族",
+      "平生徐行九万里",
+      "『去野』户外",
+      "杭州趣野户外结伴_互助非周末为主"
+    ],
+    "logger_group_white_list": [
+      "cow全局配置,filter启动后拷贝过去,ALL_GROUP",
+      "BOT-AKUN",
+      "wangxd_szz",
+      "yhk-test-szz",
+      "yhk-test-szz2",
+      "kf-szz",
+      "yhk-test",
+      "tt2232",
+      "xu-test",
+      "xu-test2",
+      "xu-test3",
+      "xu-test6",
+      "Qqq",
+      "测试群",
+      "aaa",
+      "tt",
+      "tt2",
+      "yhk-test6",
+      "wcf&cow",
+      "学习资料保存群",
+      "yhk- AI",
+      "yhk- 体锻",
+      "WeChatFerry羊",
+      "yhk-test6",
+      "扁鹊子企微测试群2",
+      "忆青春",
+      "袁氏家族",
+      "平生徐行九万里",
+      "『去野』户外",
+      "杭州趣野户外结伴_互助非周末为主"
+    ],
+    "logger_group_white_list2": [
+      "ALL_GROUP"
+    ]
+  }
+}
