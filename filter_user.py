@@ -78,7 +78,7 @@ class FilterUser(object):
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
 
-    def before_send_reply(self, e_context: EventContext):
+    def before_send_reply(self, e_context: EventContext, contacts_groupx):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
             return
 
@@ -102,11 +102,16 @@ class FilterUser(object):
 
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
+        user_object_id = contacts_groupx.get(wx_user_id).get("objectId")
+        wx_user_alias = contacts_groupx.get(wx_user_id).get("alias")
+        wx_user_account = contacts_groupx.get(wx_user_id).get("account")
         user = {
             "wxid": cmsg.actual_user_id if cmsg.scf else None,
             "UserName": wx_user_id,
             "NickName": wx_user_nickname,
-            "RemarkName": "",
+            "objectId": user_object_id,
+            "alias": wx_user_alias,
+            "account": wx_user_account,
         } #get_itchat_user(wx_user_id)
 
         # rm = RemarkNameInfo(user.RemarkName)
@@ -129,6 +134,9 @@ class FilterUser(object):
                     "Sex",
                     "Province",
                     "City",
+                    "alias",
+                    "account",
+                    "objectId",
                 ),
                 "group": None,
                 "total_tokens": total_tokens,
