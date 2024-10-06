@@ -57,7 +57,7 @@ class IKnowFilter(Plugin):
         context = e_context["context"]
         is_group = context.get("isgroup")
         if is_group:  
-            self.filter_group.before_handle_context(e_context,)
+            self.filter_group.before_handle_context(e_context)
             return
         self.filter_user.before_handle_context(e_context)
 
