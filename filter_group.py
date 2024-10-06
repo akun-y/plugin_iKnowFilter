@@ -80,14 +80,14 @@ class GroupFilter(object):
         group_name = msg.other_user_nickname or msg.from_user_nickname
         logger.info(f"======>保存消息到groupx {ret} - {group_name}")
         # 无关键字也继续派发给其他插件处理
-        if group_name in self.group_chat_keyword_ignore:
+        if group_name in self.group_chat_keyword_ignore or  "ALL_GROUP" in self.group_white_list  :
             logger.info(
                 f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
             )  # 频率非常高
             return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
 
-        if group_name not in self.group_white_list:
+        if group_name not in self.group_white_list and "ALL_GROUP" not in self.group_white_list  :
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
