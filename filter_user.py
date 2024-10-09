@@ -17,7 +17,7 @@ from plugins.plugin_comm.api.api_groupx import ApiGroupx
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
-    find_user_id_by_ctx,
+    find_actual_user_id_by_ctx,
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,

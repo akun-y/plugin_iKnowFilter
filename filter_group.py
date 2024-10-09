@@ -18,7 +18,7 @@ from plugins.plugin_comm.api.api_groupx import ApiGroupx
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
-    find_user_id_by_ctx,
+    find_actual_user_id_by_ctx,
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,
@@ -63,31 +63,37 @@ class GroupFilter(object):
         content = context.content
         msg = context.get("msg")
 
-        # 3- 是带有约定前缀的，转给系统及其它插件处理
+        # 1- 保存消息到数据库
+        ret = self._post_group_msg(msg)
+
+        # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
             logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
             return  # 转给系统及其他插件
 
-        # 4- 是机器人发出的消息， 终止处理
+        # 3- 是机器人发出的消息， 终止处理
         if msg.my_msg:
             logger.warning("--->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
 
-        # 5- 保存消息到数据库
-        ret = self._post_group_msg(msg)
-
         group_name = msg.other_user_nickname or msg.from_user_nickname
         logger.info(f"======>保存消息到groupx {ret} - {group_name}")
-        # 无关键字也继续派发给其他插件处理
-        if group_name in self.group_chat_keyword_ignore or  "ALL_GROUP" in self.group_white_list  :
+        # 4- 无关键字也继续派发给其他插件处理
+        if (
+            group_name in self.group_chat_keyword_ignore
+            or "ALL_GROUP" in self.group_white_list
+        ):
             logger.info(
                 f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
             )  # 频率非常高
             return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
 
-        if group_name not in self.group_white_list and "ALL_GROUP" not in self.group_white_list  :
+        if (
+            group_name not in self.group_white_list
+            and "ALL_GROUP" not in self.group_white_list
+        ):
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
@@ -145,9 +151,9 @@ class GroupFilter(object):
         # 用户
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
-        user_object_id = contacts_groupx.get(wx_user_id).get("objectId")
-        wx_user_alias = contacts_groupx.get(wx_user_id).get("alias")
-        wx_user_account = contacts_groupx.get(wx_user_id).get("account")
+        user_object_id = contacts_groupx.get(wx_user_id, {}).get("objectId")
+        wx_user_alias = contacts_groupx.get(wx_user_id, {}).get("alias")
+        wx_user_account = contacts_groupx.get(wx_user_id, {}).get("account")
         user = {
             "wxid": wx_user_id,
             "UserName": wx_user_id,
@@ -160,8 +166,8 @@ class GroupFilter(object):
         # 群
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
-        group_object_id = contacts_groupx.get(wx_group_id).get("objectId")
-        wx_group_alias = contacts_groupx.get(wx_group_id).get("alias")
+        group_object_id = contacts_groupx.get(wx_group_id, {}).get("objectId")
+        wx_group_alias = contacts_groupx.get(wx_group_id, {}).get("alias")
 
         group = {
             "wxid": wx_group_id,
@@ -194,7 +200,8 @@ class GroupFilter(object):
                     "Province",
                     "City",
                     "objectId",
-                    "alias","account"
+                    "alias",
+                    "account",
                 ),
                 "group": selectKeysForDict(
                     group,
@@ -208,7 +215,7 @@ class GroupFilter(object):
                 ),
                 "total_tokens": total_tokens,
                 "completion_tokens": completion_tokens,
-                "reply_text":replyMsg,
+                "reply_text": replyMsg,
                 "source": "wcferry" if cmsg.scf else "",
             },
         )
@@ -241,39 +248,43 @@ class GroupFilter(object):
             return
 
     def _post_group_msg(self, cmsg):
-        wx_user_id = cmsg.actual_user_id or cmsg.from_user_id
-        wx_user_nickname = cmsg.actual_user_nickname or cmsg.from_user_nickname
+        try:
+            wx_user_id = cmsg.actual_user_id or cmsg.from_user_id
+            wx_user_nickname = cmsg.actual_user_nickname or cmsg.from_user_nickname
 
-        wx_group_id = cmsg.other_user_id
-        wx_group_nickname = cmsg.other_user_nickname
-        user = {
-            "UserName": wx_user_id,
-            "NickName": wx_user_nickname,
-            "RemarkName": "",
-        }  # get_itchat_user(wx_user_id)
-        group = {
-            "UserName": wx_group_id,
-            "NickName": wx_group_nickname,
-            "RemarkName": "",
-        }  # get_itchat_group(wx_group_id)
+            wx_group_id = cmsg.other_user_id
+            wx_group_nickname = cmsg.other_user_nickname
+            user = {
+                "UserName": wx_user_id,
+                "NickName": wx_user_nickname,
+                "RemarkName": "",
+            }  # get_itchat_user(wx_user_id)
+            group = {
+                "UserName": wx_group_id,
+                "NickName": wx_group_nickname,
+                "RemarkName": "",
+            }  # get_itchat_group(wx_group_id)
 
-        # rm = RemarkNameInfo(user.RemarkName)
-        account = ""  # rm.get_account()
-        return self.groupx.post_chat_record_group_not_at(
-            account,
-            {
-                "agent": self.agent,
-                "user": user,
-                "group": group,
-                "content": cmsg.content,
-                "type": cmsg.ctype.name,
-                "is_at": cmsg.is_at,
-                "is_group": cmsg.is_group,
-                "time": cmsg.create_time,
-                "msgid": cmsg.msg_id,
-                "thumb": cmsg._rawmsg.thumb if cmsg._rawmsg.thumb else "",
-                "extra": cmsg._rawmsg.extra if cmsg._rawmsg.extra else "",
-                "source": "wcferry" if cmsg.scf else "",
-                "system_name": self.system_name,
-            },
-        )
+            # rm = RemarkNameInfo(user.RemarkName)
+            account = ""  # rm.get_account()
+            return self.groupx.post_chat_record_group_not_at(
+                account,
+                {
+                    "agent": self.agent,
+                    "user": user,
+                    "group": group,
+                    "content": cmsg.content,
+                    "type": cmsg.ctype.name if cmsg.ctype else "",
+                    "is_at": cmsg.is_at,
+                    "is_group": cmsg.is_group,
+                    "time": cmsg.create_time,
+                    "msgid": cmsg.msg_id,
+                    "thumb": getattr(cmsg._rawmsg, 'thumb', ""),
+                    "extra": getattr(cmsg._rawmsg, 'extra', ""),
+                    "source": "wcferry" if cmsg.scf else "",
+                    "system_name": self.system_name,
+                },
+            )
+        except Exception as e:
+            logger.error(f"======>[IKnowFilter] _post_group_msg fail {e}")
+
