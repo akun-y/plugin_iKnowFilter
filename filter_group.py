@@ -281,8 +281,8 @@ class GroupFilter(object):
                     "msgid": cmsg.msg_id,
                     "thumb": getattr(cmsg._rawmsg, 'thumb', ""),
                     "extra": getattr(cmsg._rawmsg, 'extra', ""),
-                    "source": "wcferry" if cmsg.scf else "",
-                    "system_name": self.system_name,
+                    "source": "wcferry" if getattr(cmsg, 'scf', False) else "",
+                    "system_name": getattr(self, 'system_name', ""),
                 },
             )
         except Exception as e:
