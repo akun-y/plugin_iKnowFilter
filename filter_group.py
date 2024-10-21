@@ -29,7 +29,7 @@ from plugins.plugin_comm.plugin_comm import (
 
 
 class GroupFilter(object):
-    def __init__(self, config):
+    def __init__(self, config,groupx,contacts_groupx):
         super().__init__()
         self.config = config
         if self.config:
@@ -43,7 +43,8 @@ class GroupFilter(object):
             "group_chat_keyword_ignore", []
         )
 
-        self.groupx = ApiGroupx()
+        self.groupx = groupx
+        self.contacts_groupx = contacts_groupx
         self.agent = conf().get("bot_account") or "123112312"
         self.agent_name = conf().get("bot_name")
         self.system_name = conf().get("system_name")

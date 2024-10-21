@@ -8,6 +8,7 @@ from config import get_root
 import plugins
 from common.log import logger
 from plugins import *
+from plugins.plugin_comm.api.api_groupx import ApiGroupx
 from plugins.plugin_comm.json_file import load_json_from_file
 from plugins.plugin_iKnowFilter.filter_group import GroupFilter
 from plugins.plugin_iKnowFilter.filter_user import FilterUser
@@ -28,8 +29,11 @@ class IKnowFilter(Plugin):
         self.config = super().load_config()
         self.filter_config = self.config.get("group_filter")
 
-        self.filter_user = FilterUser(self.config)
-        self.filter_group = GroupFilter(self.config)
+        self.groupx = ApiGroupx()
+        self.contacts_groupx =             load_json_from_file(self.directory, "groupx_contacts.json") 
+        
+        self.filter_user = FilterUser(self.config,self.groupx,self.contacts_groupx)
+        self.filter_group = GroupFilter(self.config,self.groupx,self.contacts_groupx)
 
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
@@ -37,9 +41,8 @@ class IKnowFilter(Plugin):
         self.refresh_global_config()
 
         self.directory = os.path.join(get_root(), "tmp")
-        self.contacts_groupx = (
-            load_json_from_file(self.directory, "groupx_contacts.json") or {}
-        )
+
+        
         logger.info(f"======>[IKnowFilter] inited")
 
     def get_help_text(self, **kwargs):

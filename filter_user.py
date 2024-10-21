@@ -28,10 +28,10 @@ from plugins.plugin_comm.plugin_comm import (
 
 
 class FilterUser(object):
-    def __init__(self, config):
+    def __init__(self, config,groupx,contacts_groupx):
         self.config = config
-
-        self.groupx = ApiGroupx()
+        self.groupx = groupx
+        self.contacts_groupx = contacts_groupx
         self.agent = conf().get("bot_account") or "123112312"
         self.agent_name = conf().get("bot_name")
         self.reg_url = conf().get("iknow_reg_url")
@@ -77,6 +77,33 @@ class FilterUser(object):
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
+        
+        content = context.content
+        msg = context.get("msg")
+
+        # 1- 保存消息到数据库
+        ret = self._post_user_msg(msg)
+
+        # 2- 是带有约定前缀的，转给系统及其它插件处理
+        # if any(content.startswith(item) for item in self.prefix_array):
+        #     logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
+        #     return  # 转给系统及其他插件
+
+        # 3- 是机器人发出的消息， 终止处理
+        if msg.my_msg:
+            logger.warning("--->user filter:我自己发出的消息")
+            e_context.action = EventAction.BREAK_PASS  # 不响应
+            return
+        
+        # 非文字内容,只记录不处理
+        if context.type not in [ContextType.TEXT]:  # 转给其他插件处理
+            return
+        #  是 @ 我，记录,转给系统及其它插件处理
+        if msg.is_at:
+            logger.info("===>@我的")
+            return  # 转给系统及其他插件
+
+        
 
     def before_send_reply(self, e_context: EventContext, contacts_groupx):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
@@ -169,3 +196,34 @@ class FilterUser(object):
             # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
             # e_context.action = EventAction.BREAK_PASS
             return
+
+    def _post_user_msg(self, cmsg):
+        try:
+            wx_user_id = cmsg.actual_user_id or cmsg.from_user_id
+            wx_user_nickname = cmsg.actual_user_nickname or cmsg.from_user_nickname
+
+            user = {
+                "UserName": wx_user_id,
+                "NickName": wx_user_nickname,
+                "RemarkName": "",
+            } 
+
+            # rm = RemarkNameInfo(user.RemarkName)
+            account = ""  # rm.get_account()
+            return self.groupx.post_chat_record_user_not_at(
+                account,
+                {
+                    "agent": self.agent,
+                    "user": user,
+                    "content": cmsg.content,
+                    "type": cmsg.ctype.name if cmsg.ctype else "",
+                    "time": cmsg.create_time,
+                    "msgid": cmsg.msg_id,
+                    "thumb": getattr(cmsg._rawmsg, 'thumb', ""),
+                    "extra": getattr(cmsg._rawmsg, 'extra', ""),
+                    "source": "wcferry" if getattr(cmsg, 'scf', False) else "",
+                    "system_name": getattr(self, 'system_name', ""),
+                },
+            )
+        except Exception as e:
+            logger.error(f"======>[IKnowFilter] _post_user_msg fail {e}")
