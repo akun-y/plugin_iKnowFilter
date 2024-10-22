@@ -30,7 +30,9 @@ class IKnowFilter(Plugin):
         self.filter_config = self.config.get("group_filter")
 
         self.groupx = ApiGroupx()
-        self.contacts_groupx =             load_json_from_file(self.directory, "groupx_contacts.json") 
+                
+        self.directory = os.path.join(get_root(), "tmp")
+        self.contacts_groupx = load_json_from_file(self.directory, "groupx_contacts.json") 
         
         self.filter_user = FilterUser(self.config,self.groupx,self.contacts_groupx)
         self.filter_group = GroupFilter(self.config,self.groupx,self.contacts_groupx)
@@ -39,9 +41,6 @@ class IKnowFilter(Plugin):
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
 
         self.refresh_global_config()
-
-        self.directory = os.path.join(get_root(), "tmp")
-
         
         logger.info(f"======>[IKnowFilter] inited")
 

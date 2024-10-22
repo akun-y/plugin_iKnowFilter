@@ -83,7 +83,7 @@ class FilterUser(object):
 
         # 1- 保存消息到数据库
         ret = self._post_user_msg(msg)
-
+        logger.info(f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type',None)}")
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         # if any(content.startswith(item) for item in self.prefix_array):
         #     logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
@@ -129,6 +129,7 @@ class FilterUser(object):
 
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
+        
         user_object_id = contacts_groupx.get(wx_user_id).get("objectId")
         wx_user_alias = contacts_groupx.get(wx_user_id).get("alias")
         wx_user_account = contacts_groupx.get(wx_user_id).get("account")
