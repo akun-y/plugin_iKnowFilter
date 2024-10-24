@@ -8,6 +8,7 @@ from bridge.bridge import Bridge
 from bridge.reply import ReplyType
 
 # from lib import itchat
+from common.singleton import singleton
 import plugins
 from bridge.context import ContextType
 from common.log import logger
@@ -25,7 +26,6 @@ from plugins.plugin_comm.plugin_comm import (
     send_reg_msg,
     send_text_with_url,
 )
-
 
 class FilterUser(object):
     def __init__(self, config,groupx,contacts_groupx):
