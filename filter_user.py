@@ -130,9 +130,9 @@ class FilterUser(object):
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
         
-        user_object_id = contacts_groupx.get(wx_user_id).get("objectId")
-        wx_user_alias = contacts_groupx.get(wx_user_id).get("alias")
-        wx_user_account = contacts_groupx.get(wx_user_id).get("account")
+        user_object_id = contacts_groupx.get(wx_user_id,{}).get("objectId")
+        wx_user_alias = contacts_groupx.get(wx_user_id,{}).get("alias")
+        wx_user_account = contacts_groupx.get(wx_user_id,{}).get("account")
         user = {
             "wxid": cmsg.actual_user_id if cmsg.scf else None,
             "UserName": wx_user_id,
