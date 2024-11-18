@@ -66,6 +66,8 @@ class GroupFilter(object):
 
         # 1- 保存消息到数据库
         ret = self._post_group_msg(msg)
+        group_name = msg.from_user_nickname or msg.other_user_nickname
+        logger.info(f"======>保存消息到groupx {ret} - {group_name}")
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
@@ -78,8 +80,7 @@ class GroupFilter(object):
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
 
-        group_name = msg.other_user_nickname or msg.from_user_nickname
-        logger.info(f"======>保存消息到groupx {ret} - {group_name}")
+        
         # 4- 无关键字也继续派发给其他插件处理
         if (
             group_name in self.group_chat_keyword_ignore
