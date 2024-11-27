@@ -9,8 +9,9 @@ import plugins
 from common.log import logger
 from plugins import *
 from plugins.plugin_comm.api.api_groupx import ApiGroupx
+from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
 from plugins.plugin_comm.json_file import load_json_from_file
-from plugins.plugin_iKnowFilter.filter_group import GroupFilter
+from plugins.plugin_iKnowFilter.filter_group import FilterGroup
 from plugins.plugin_iKnowFilter.filter_user import FilterUser
 
 
@@ -30,12 +31,13 @@ class IKnowFilter(Plugin):
         self.filter_config = self.config.get("group_filter")
 
         self.groupx = ApiGroupx()
+        self.groupx_user_man = GroupxUserMan()
                 
         self.directory = os.path.join(get_root(), "tmp")
-        self.contacts_groupx = load_json_from_file(self.directory, "groupx_contacts.json") 
+        self.contacts_groupx = self.groupx_user_man
         
         self.filter_user = FilterUser(self.config,self.groupx,self.contacts_groupx)
-        self.filter_group = GroupFilter(self.config,self.groupx,self.contacts_groupx)
+        self.filter_group = FilterGroup(self.config,self.groupx,self.contacts_groupx)
 
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
@@ -51,9 +53,9 @@ class IKnowFilter(Plugin):
         ctx = e_context["context"]
         is_group = ctx.get("isgroup", False)
         if is_group:
-            self.filter_group.before_send_reply(e_context,self.contacts_groupx)
+            self.filter_group.before_send_reply(e_context)
             return
-        self.filter_user.before_send_reply(e_context,self.contacts_groupx)
+        self.filter_user.before_send_reply(e_context)
 
     def on_handle_context(self, e_context: EventContext):
         context = e_context["context"]

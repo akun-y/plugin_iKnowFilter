@@ -17,6 +17,7 @@ from channel.chat_channel import check_contain, check_prefix
 from plugins.plugin_comm.api.api_groupx import ApiGroupx
 
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
+from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
     find_actual_user_id_by_ctx,
@@ -28,8 +29,8 @@ from plugins.plugin_comm.plugin_comm import (
     send_text_with_url,
 )
 
-class GroupFilter(object):
-    def __init__(self, config,groupx,contacts_groupx):
+class FilterGroup(object):
+    def __init__(self, config,groupx,contacts_groupx:GroupxUserMan):
         super().__init__()
         self.config = config
         if self.config:
@@ -127,7 +128,7 @@ class GroupFilter(object):
             f'========>包含关键字,继续:{content}-"{group_name}"="{msg.actual_user_nickname}"'
         )  # 转系统及其他插件处理
 
-    def before_send_reply(self, e_context: EventContext, contacts_groupx):
+    def before_send_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
             logger.warn("======>应答:非文字内容")
             return
@@ -153,9 +154,11 @@ class GroupFilter(object):
         # 用户
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
-        user_object_id = contacts_groupx.get(wx_user_id, {}).get("objectId")
-        wx_user_alias = contacts_groupx.get(wx_user_id, {}).get("alias")
-        wx_user_account = contacts_groupx.get(wx_user_id, {}).get("account")
+        
+        contact = self.contacts_groupx.get_contact(wx_user_id)
+        user_object_id = contact.get("objectId")
+        wx_user_alias = contact.get("alias")
+        wx_user_account = contact.get("account")
         user = {
             "wxid": wx_user_id,
             "UserName": wx_user_id,
@@ -168,8 +171,10 @@ class GroupFilter(object):
         # 群
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
-        group_object_id = contacts_groupx.get(wx_group_id, {}).get("objectId")
-        wx_group_alias = contacts_groupx.get(wx_group_id, {}).get("alias")
+        
+        contact = self.contacts_groupx.get_contact(wx_group_id)
+        group_object_id = contact.get("objectId")
+        wx_group_alias = contact.get("alias")
 
         group = {
             "wxid": wx_group_id,

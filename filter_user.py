@@ -16,6 +16,7 @@ from plugins import *
 from channel.chat_channel import check_contain
 from plugins.plugin_comm.api.api_groupx import ApiGroupx
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
+from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
     find_actual_user_id_by_ctx,
@@ -105,7 +106,7 @@ class FilterUser(object):
 
         
 
-    def before_send_reply(self, e_context: EventContext, contacts_groupx):
+    def before_send_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:
             return
 
@@ -130,9 +131,10 @@ class FilterUser(object):
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
         
-        user_object_id = contacts_groupx.get(wx_user_id,{}).get("objectId")
-        wx_user_alias = contacts_groupx.get(wx_user_id,{}).get("alias")
-        wx_user_account = contacts_groupx.get(wx_user_id,{}).get("account")
+        contact = self.contacts_groupx.get_contact(wx_user_id)
+        user_object_id = contact.get("objectId")
+        wx_user_alias = contact.get("alias")
+        wx_user_account = contact.get("account")
         user = {
             "wxid": cmsg.actual_user_id if cmsg.scf else None,
             "UserName": wx_user_id,
