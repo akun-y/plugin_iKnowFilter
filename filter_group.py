@@ -230,10 +230,12 @@ class FilterGroup(object):
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
                 pass
+                
                 # rm.set_account(ret["account"])
                 # itchat.set_alias(user.UserName, rm.get_remark_name())
                 # user.update()
                 # itchat.dump_login_status()
+
 
             balance = ret["balanceAITokens"]
             if ret["success"] is False:

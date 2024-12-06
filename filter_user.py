@@ -185,12 +185,12 @@ class FilterUser(object):
             balance = ret["balanceAITokens"]
             if balance < -3000 or ret["success"] is False:
                 logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
-                # itchat.send_msg(msg, toUserName=to_user_id)
-                send_text_with_url(
-                    e_context,
-                    f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                    self.recharge_url,
-                )
+                
+                # send_text_with_url(
+                #     e_context,
+                #     f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
+                #     self.recharge_url,
+                # )
                 return
             logger.info(f"======>[IKnowFilter] consumeTokens success {ret}")
         else:
