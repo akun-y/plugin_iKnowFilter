@@ -72,7 +72,7 @@ class FilterGroup(object):
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
-            logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
+            logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理 {msg.content}")
             return  # 转给系统及其他插件
 
         # 3- 是机器人发出的消息， 终止处理
