@@ -155,10 +155,11 @@ class FilterGroup(object):
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
         
-        contact = self.contacts_groupx.get_contact(wx_user_id)
-        user_object_id = contact.get("objectId")
-        wx_user_alias = contact.get("alias")
-        wx_user_account = contact.get("account")
+        contact = self.contacts_groupx.get_contact(wx_user_id)        
+        user_object_id = contact.get("objectId","")
+        wx_user_alias = contact.get("alias","")
+        wx_user_account = contact.get("account","")
+        
         user = {
             "wxid": wx_user_id,
             "UserName": wx_user_id,
@@ -173,8 +174,8 @@ class FilterGroup(object):
         wx_group_nickname = cmsg.other_user_nickname
         
         contact = self.contacts_groupx.get_contact(wx_group_id)
-        group_object_id = contact.get("objectId")
-        wx_group_alias = contact.get("alias")
+        group_object_id = contact.get("objectId","")
+        wx_group_alias = contact.get("alias","")        
 
         group = {
             "wxid": wx_group_id,
