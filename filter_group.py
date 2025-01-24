@@ -137,7 +137,10 @@ class FilterGroup(object):
         reply = e_context["reply"]
         cmsg = e_context["context"]["msg"]
 
-        replyMsg = reply.content
+        if reply.type == ReplyType.IMAGE:
+            replyMsg = "图片"
+        else:
+            replyMsg = reply.content
         bot = Bridge().get_bot("chat")
         all_sessions = bot.sessions
         session_id = ctx.get("session_id")
@@ -149,7 +152,18 @@ class FilterGroup(object):
             )
         else:
             completion_tokens = len(cmsg.content)
-            total_tokens = len(replyMsg) + completion_tokens
+            # 安全地计算回复消息的长度
+            if isinstance(replyMsg, str):
+                reply_tokens = len(replyMsg)
+            else:
+                # 如果不是文本类型，则设为0
+                if reply.type == ReplyType.IMAGE:
+                    reply_tokens = 1000
+                else:
+                    reply_tokens = 0
+                logger.warning(f"非文本类型的回复消息: {type(replyMsg)}")
+            
+            total_tokens = reply_tokens + completion_tokens
 
         # 用户
         wx_user_id = cmsg.actual_user_id
