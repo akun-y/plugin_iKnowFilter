@@ -76,7 +76,7 @@ class FilterGroup(object):
             return  # 转给系统及其他插件
 
         # 3- 是机器人发出的消息， 终止处理
-        if msg.my_msg:
+        if msg.my_msg :
             logger.warning("--->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
@@ -92,7 +92,6 @@ class FilterGroup(object):
             )  # 频率非常高
             return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
-
         if (
             group_name not in self.group_white_list
             and "ALL_GROUP" not in self.group_white_list
