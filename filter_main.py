@@ -21,7 +21,7 @@ from plugins.plugin_iKnowFilter.filter_user import FilterUser
     desire_priority=999,
     hidden=False,
     desc="群白名单过滤",
-    version="0.2.6",
+    version="0.3.1",
     author="akun.yunqi",
 )
 class IKnowFilter(Plugin):
@@ -70,7 +70,7 @@ class IKnowFilter(Plugin):
         time.sleep(8)
 
         # 系统默认情况关闭所有群应答,只有启动filter才能打开应答,否则乱回答.
-        logger_group_white_list = self.filter_config.get("logger_group_white_list")
+        logger_group_white_list = self.filter_config.get("logger_group_white_list",[])
         conf()["group_name_white_list"].extend(logger_group_white_list)
         logger.info(f"======>接收消息群白名单,加入:{len(logger_group_white_list)}")
         # 群消息处理前缀,加入"",开启所有消息应答,
@@ -83,7 +83,7 @@ class IKnowFilter(Plugin):
 
         channel_name = conf().get("channel_type", "wx")
         channel = channel_factory.create_channel(channel_name)
-        if channel.reload_conf:
+        if hasattr(channel, 'reload_conf'):
             channel.reload_conf()
 
         # channel.startup()

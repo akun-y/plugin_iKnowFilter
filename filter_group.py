@@ -1,5 +1,21 @@
 # encoding:utf-8
 
+"""
+filter_group.py - 群聊消息过滤器
+
+功能:
+- 根据配置的白名单和关键词过滤群聊消息
+- 记录群聊消息到数据库
+- 处理群聊消息的计费
+
+修改历史:
+- 2025-04-30: 添加文件注释说明
+- 2025-04-30: 优化群聊消息过滤逻辑
+- 2025-04-30: 完善计费功能
+
+作者: Trae AI
+"""
+
 import json
 import os
 from sys import prefix
@@ -29,13 +45,13 @@ from plugins.plugin_comm.plugin_comm import (
     send_text_with_url,
 )
 
-class FilterGroup(object):
-    def __init__(self, config,groupx,contacts_groupx:GroupxUserMan):
-        super().__init__()
-        self.config = config
+from plugins.plugin_iKnowFilter.filter_base import FilterBase
+
+class FilterGroup(FilterBase):
+    def __init__(self, config, groupx, contacts_groupx:GroupxUserMan):
+        super().__init__(config, groupx, contacts_groupx)
         if self.config:
             self.filter_config = self.config.get("group_filter")
-
         else:
             self.filter_config = {"group_name_white_list": []}
 
@@ -43,19 +59,6 @@ class FilterGroup(object):
         self.group_chat_keyword_ignore = self.filter_config.get(
             "group_chat_keyword_ignore", []
         )
-
-        self.groupx = groupx
-        self.contacts_groupx = contacts_groupx
-        self.agent = conf().get("bot_account") or "123112312"
-        self.agent_name = conf().get("bot_name")
-        self.system_name = conf().get("system_name")
-        self.reg_url = conf().get("iknow_reg_url")
-        self.recharge_url = conf().get("iknow_recharge_url")
-        self.oper_dict = {
-            "create_img": "生成图片",
-            "summary_file": "生成文件摘要",
-            "summary_link": "生成链接文字摘要",
-        }
         # 约定前缀的，转给系统及其它插件处理
         self.prefix_array = self.filter_config.get("group_forward_prefix") or []
 
@@ -64,11 +67,22 @@ class FilterGroup(object):
 
         content = context.content
         msg = context.get("msg")
-
+        group_name = msg.other_user_nickname or msg.from_user_nickname
+        group_id = msg.other_user_id or msg.from_user_id
         # 1- 保存消息到数据库
         ret = self._post_group_msg(msg)
-        group_name = msg.from_user_nickname or msg.other_user_nickname
-        logger.info(f"======>保存消息到groupx {ret} - {group_name}")
+
+        if ret :
+            results =  ret.get("results",None)
+            if results and len(results)>0:
+                group_object_id = results[0].get('groupOID','')
+                self._set_group_info({
+                    "wxid": group_id,
+                    "name": group_name,
+                    "objectId": group_object_id
+                    })                
+
+        logger.info(f"======>保存消息到groupx {group_name}\n 服务器返回:\n{ret}")
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
@@ -140,106 +154,21 @@ class FilterGroup(object):
             replyMsg = "图片"
         else:
             replyMsg = reply.content
-        bot = Bridge().get_bot("chat")
-        all_sessions = bot.sessions
-        session_id = ctx.get("session_id")
-        user_session = all_sessions.build_session(session_id)
-
-        if hasattr(bot, "calc_tokens"):
-            completion_tokens, total_tokens = bot.calc_tokens(
-                user_session.messages, replyMsg
-            )
-        else:
-            completion_tokens = len(cmsg.content)
-            # 安全地计算回复消息的长度
-            if isinstance(replyMsg, str):
-                reply_tokens = len(replyMsg)
-            else:
-                # 如果不是文本类型，则设为0
-                if reply.type == ReplyType.IMAGE:
-                    reply_tokens = 1000
-                else:
-                    reply_tokens = 0
-                logger.warning(f"非文本类型的回复消息: {type(replyMsg)}")
-            
-            total_tokens = reply_tokens + completion_tokens
+        completion_tokens, total_tokens = self._calc_tokens(ctx, replyMsg, reply)
 
         # 用户
         wx_user_id = cmsg.actual_user_id
         wx_user_nickname = cmsg.actual_user_nickname
-        
-        contact = self.contacts_groupx.get_contact(wx_user_id)        
-        user_object_id = contact.get("objectId","")
-        wx_user_alias = contact.get("alias","")
-        wx_user_account = contact.get("account","")
-        
-        user = {
-            "wxid": wx_user_id,
-            "UserName": wx_user_id,
-            "NickName": wx_user_nickname,
-            "objectId": user_object_id,
-            "alias": wx_user_alias,
-            "account": wx_user_account,
-        }
+        user = self._get_user_info(wx_user_id, wx_user_nickname)
 
         # 群
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
-        
-        contact = self.contacts_groupx.get_contact(wx_group_id)
-        group_object_id = contact.get("objectId","")
-        wx_group_alias = contact.get("alias","")        
-
-        group = {
-            "wxid": wx_group_id,
-            "UserName": wx_group_id,
-            "NickName": wx_group_nickname,
-            "RemarkName": "",
-            "objectId": group_object_id,
-            "alias": wx_group_alias,
-        }  # get_itchat_group(wx_group_id)
+        group = self._get_group_info(wx_group_id, wx_group_nickname)
 
         logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
-        # rm = RemarkNameInfo(user.RemarkName)
-        account = ""  # rm.get_account()
-        if not is_valid_string(user.get("NickName", None)):
-            user["NickName"] = wx_user_nickname
-        if not is_eth_address(account):
-            account = EthZero
-        ret = self.groupx.consumeTokens(
-            account,
-            {
-                "type": "text",
-                "agent": self.agent,
-                "user": selectKeysForDict(
-                    user,
-                    "wxid",
-                    "NickName",
-                    "UserName",
-                    "RemarkName",
-                    "Sex",
-                    "Province",
-                    "City",
-                    "objectId",
-                    "alias",
-                    "account",
-                ),
-                "group": selectKeysForDict(
-                    group,
-                    "wxid",
-                    "NickName",
-                    "UserName",
-                    "RemarkName",
-                    "DisplayName",
-                    "objectId",
-                    "alias",
-                ),
-                "total_tokens": total_tokens,
-                "completion_tokens": completion_tokens,
-                "reply_text": replyMsg,
-                "source": "wcferry" if cmsg.scf else "",
-            },
-        )
+        account = ""
+        ret = self._consume_tokens(account, user, group, total_tokens, completion_tokens, replyMsg,cmsg)
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
