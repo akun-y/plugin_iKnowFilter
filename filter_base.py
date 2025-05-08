@@ -164,8 +164,14 @@ class FilterBase(object):
         return ret
 
     def get_source(self, cmsg):
+        source  = conf().get("channel_type",None)
+        if source:
+            return source
         if getattr(cmsg, 'scf', False):
-            return "wcferry"
+            return "wcferry" # hook
         if getattr(cmsg, 'wework', False):
-            return "wework"
+            return "wework" # 企业微信
+        to_user_id = getattr(cmsg, 'to_user_id', '')
+        if to_user_id.startswith("gh_"):
+            return "wechatmp" # 公众号
         return "noname"

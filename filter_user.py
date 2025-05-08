@@ -76,6 +76,21 @@ class FilterUser(FilterBase):
         # 1- 保存消息到数据库
         ret = self._post_user_msg(msg)
         logger.info(f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type',None)}")
+        
+        # 如果服务器做了应答,不再转其他插件处理
+        if ret :
+            results =  ret.get("results",None)
+            if results and len(results)>0:
+                group_object_id = results[0].get('groupOID','')
+                self._set_group_info({"wxid": msg.to_user_id,"name": msg.to_user_nickname,"objectId": group_object_id})  
+                
+                send_result =  results[0].get("sendResult",False)  
+                if send_result:               
+                    logger.warn(f"======>[IKnowFilter] 服务器做了应答,不再转其他插件处理")
+                    e_context.action = EventAction.BREAK_PASS  # 不响应
+                    return          
+
+        logger.info(f"======>保存消息到groupx\n 服务器返回:\n{ret}")
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         # if any(content.startswith(item) for item in self.prefix_array):
         #     logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
@@ -164,6 +179,8 @@ class FilterUser(FilterBase):
                     "msgid": cmsg.msg_id,
                     "thumb": getattr(cmsg._rawmsg, 'thumb', ""),
                     "extra": getattr(cmsg._rawmsg, 'extra', ""),
+                    "to_user_id": cmsg.to_user_id,
+                    "to_user_nickname": cmsg.to_user_nickname,
                     "source": self.get_source(cmsg),
                     "system_name": getattr(self, 'system_name', ""),
                 },
