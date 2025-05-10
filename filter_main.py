@@ -44,7 +44,7 @@ class IKnowFilter(Plugin):
 
         self.refresh_global_config()
         
-        logger.info(f"======>[IKnowFilter] inited")
+        logger.warn(f"======>[IKnowFilter] inited")
 
     def get_help_text(self, **kwargs):
         return "暂无帮助信息"
