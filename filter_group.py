@@ -40,6 +40,8 @@ from plugins.plugin_comm.plugin_comm import (
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,
+    make_wxgroup_by_ctx,
+    make_wxuser_by_ctx,
     selectKeysForDict,
     send_reg_msg,
     send_text_with_url,
@@ -76,11 +78,14 @@ class FilterGroup(FilterBase):
             results =  ret.get("results",None)
             if results and len(results)>0:
                 group_object_id = results[0].get('groupOID','')
-                self._set_group_info({
-                    "wxid": group_id,
-                    "name": group_name,
-                    "objectId": group_object_id
-                    })                
+                wx_group = make_wxgroup_by_ctx(context)
+                if(group_object_id and group_object_id != wx_group.get('objectId')):
+                    self._set_contact_info({"wxid": group_id,"name": group_name,"objectId": group_object_id})       
+                
+                user_object_id = results[0].get('userOID','')
+                wx_user = make_wxuser_by_ctx(context)
+                if(user_object_id and user_object_id != wx_user.get('objectId')):                   
+                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),"objectId": user_object_id})   
 
         logger.info(f"======>保存消息到groupx {group_name}\n 服务器返回:\n{ret}")
 
@@ -164,7 +169,7 @@ class FilterGroup(FilterBase):
         # 群
         wx_group_id = cmsg.other_user_id
         wx_group_nickname = cmsg.other_user_nickname
-        group = self._get_group_info(wx_group_id, wx_group_nickname)
+        group = self._get_contact_info(wx_group_id, wx_group_nickname)
 
         logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
         account = ""

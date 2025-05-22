@@ -1,7 +1,7 @@
 # encoding:utf-8
 
 import time
-from typing import Dict
+from typing import Dict, Any, Optional
 from bridge.bridge import Bridge
 from channel import channel_factory
 from config import get_root
@@ -50,16 +50,16 @@ class IKnowFilter(Plugin):
         return "暂无帮助信息"
 
     def on_send_reply(self, e_context: EventContext):
-        ctx = e_context["context"]
-        is_group = ctx.get("isgroup", False)
+        ctx: Dict[str, Any] = e_context["context"]
+        is_group: bool = ctx.get("isgroup", False)
         if is_group:
             self.filter_group.before_send_reply(e_context)
             return
         self.filter_user.before_send_reply(e_context)
 
     def on_handle_context(self, e_context: EventContext):
-        context = e_context["context"]
-        is_group = context.get("isgroup")
+        context: Dict[str, Any] = e_context["context"]
+        is_group: bool = context.get("isgroup")
         if is_group:  
             self.filter_group.before_handle_context(e_context)
             return

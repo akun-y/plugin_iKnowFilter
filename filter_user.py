@@ -82,7 +82,7 @@ class FilterUser(FilterBase):
             results =  ret.get("results",None)
             if results and len(results)>0:
                 group_object_id = results[0].get('groupOID','')
-                self._set_group_info({"wxid": msg.to_user_id,"name": msg.to_user_nickname,"objectId": group_object_id})  
+                self._set_contact_info({"wxid": msg.to_user_id,"name": msg.to_user_nickname,"objectId": group_object_id})  
                 
                 send_result =  results[0].get("sendResult",False)  
                 if send_result:               

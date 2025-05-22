@@ -34,7 +34,7 @@ from bridge.context import ContextType
 from common.log import logger
 from config import conf, load_config
 from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
-from plugins.plugin_comm.groupx.groupx_users_man import GroupxContact
+from plugins.plugin_comm.groupx.groupx_users_man import ContactFromSrv
 from plugins.plugin_comm.plugin_comm import (
     EthZero,
     is_eth_address,
@@ -81,7 +81,7 @@ class FilterBase(object):
             total_tokens = reply_tokens + completion_tokens
         return completion_tokens, total_tokens
 
-    def _get_user_info(self, wx_user_id, wx_user_nickname)->GroupxContact:
+    def _get_user_info(self, wx_user_id, wx_user_nickname)->ContactFromSrv:
         contact = self.contacts_groupx.get_contact(wx_user_id)
         user_object_id = contact.get("objectId", "")
         wx_user_alias = contact.get("alias", "")
@@ -95,17 +95,17 @@ class FilterBase(object):
             "alias": wx_user_alias,
             "account": wx_user_account,
         }
-        return GroupxContact(**user)
-    def _set_group_info(self, group:GroupxContact):
+        return ContactFromSrv(**user)
+    def _set_contact_info(self, contact:ContactFromSrv):
         if not self.contacts_groupx:
             return 
-        if not group.get("wxid", None):
+        if not contact.get("wxid", None):
             return 
-        if not group.get("objectId", None):
+        if not contact.get("objectId", None):
             return
-        self.contacts_groupx.add_contact(group)
+        self.contacts_groupx.add_contact(contact)
         return 
-    def _get_group_info(self, wx_group_id, wx_group_nickname):
+    def _get_contact_info(self, wx_group_id, wx_group_nickname):
         contact = self.contacts_groupx.get_contact(wx_group_id)
         group_object_id = contact.get("objectId", "")
         wx_group_alias = contact.get("alias", "")
