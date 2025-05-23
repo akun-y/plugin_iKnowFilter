@@ -196,7 +196,7 @@ class FilterGroup(FilterBase):
                 #    )
 
                 return
-            logger.info(f"======>[IKnowFilter] consumeTokens successl {ret}")
+            logger.warn(f"======>[IKnowFilter] consumeTokens successl {ret}")
         else:
             logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。

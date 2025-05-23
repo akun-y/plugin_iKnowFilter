@@ -75,7 +75,7 @@ class FilterUser(FilterBase):
 
         # 1- 保存消息到数据库
         ret = self._post_user_msg(msg)
-        logger.info(f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type',None)}")
+        logger.warn(f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type',None)}")
         
         # 如果服务器做了应答,不再转其他插件处理
         if ret :
@@ -147,7 +147,7 @@ class FilterUser(FilterBase):
                 #     self.recharge_url,
                 # )
                 return
-            logger.info(f"======>[IKnowFilter] consumeTokens success {ret}")
+            logger.warn(f"======>[IKnowFilter] consumeTokens success {ret}")
         else:
             logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。
