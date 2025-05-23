@@ -28,7 +28,7 @@ class IKnowFilter(Plugin):
     def __init__(self):
         super().__init__()
         self.config = super().load_config()
-        self.filter_config = self.config.get("group_filter")
+        self.filter_config = self.config.get("group_filter") or {}
 
         self.groupx = ApiGroupx()
         self.groupx_user_man = GroupxUserMan()
