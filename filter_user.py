@@ -23,6 +23,8 @@ from plugins.plugin_comm.plugin_comm import (
     is_eth_address,
     is_valid_string,
     make_chat_sign_req,
+    make_wxgroup_by_ctx,
+    make_wxuser_by_ctx,
     selectKeysForDict,
     send_reg_msg,
     send_text_with_url,
@@ -126,8 +128,11 @@ class FilterUser(FilterBase):
         wx_user_id = cmsg.from_user_id
         wx_user_nickname = cmsg.from_user_nickname
         user = self._get_user_info(wx_user_id, wx_user_nickname)
-        account = None
-        ret = self._consume_tokens(account, user, None, total_tokens, completion_tokens, replyMsg,cmsg)
+        
+        wx_user = make_wxuser_by_ctx(ctx)
+        wx_group = make_wxgroup_by_ctx(ctx)
+        account = wx_user.get('account')
+        ret = self._consume_tokens(account, wx_user, wx_group, total_tokens, completion_tokens, replyMsg,cmsg)
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
