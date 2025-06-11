@@ -130,9 +130,8 @@ class FilterUser(FilterBase):
         user = self._get_user_info(wx_user_id, wx_user_nickname)
         
         wx_user = make_wxuser_by_ctx(ctx)
-        wx_group = make_wxgroup_by_ctx(ctx)
         account = wx_user.get('account')
-        ret = self._consume_tokens(account, wx_user, wx_group, total_tokens, completion_tokens, replyMsg,cmsg)
+        ret = self._consume_tokens(account, wx_user, None, total_tokens, completion_tokens, replyMsg,cmsg)
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
