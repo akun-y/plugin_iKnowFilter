@@ -80,14 +80,15 @@ class FilterGroup(FilterBase):
                 group_object_id = results[0].get('groupOID','')
                 wx_group = make_wxgroup_by_ctx(context)
                 if(group_object_id and group_object_id != wx_group.get('objectId')):
-                    self._set_contact_info({"wxid": group_id,"name": group_name,"objectId": group_object_id})       
+                    self._set_contact_info({"wxid": group_id,"name": group_name,"objectId": group_object_id,"account":'',"alias":''})       
                 
                 user_object_id = results[0].get('userOID','')
                 wx_user = make_wxuser_by_ctx(context)
                 if(user_object_id and user_object_id != wx_user.get('objectId')):                   
-                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),"objectId": user_object_id})   
+                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),
+                        "objectId": user_object_id,"account":wx_user.get("account"),"alias":wx_user.get("alias")})   
 
-        logger.info(f"======>保存消息到groupx {group_name}\n 服务器返回:\n{ret}")
+        logger.info(f"======>保存消息到groupx:{group_name}\n服务器返回:\n{ret}")
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
