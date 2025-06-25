@@ -82,11 +82,16 @@ class FilterGroup(FilterBase):
                 if(group_object_id and group_object_id != wx_group.get('objectId')):
                     self._set_contact_info({"wxid": group_id,"name": group_name,"objectId": group_object_id,"account":'',"alias":''})       
                 
-                user_object_id = results[0].get('userOID','')
+                # 设置 user objectId
+                user_object_id = results[0].get('userOID','')                
+                gx_user_account = results[0].get('result',{}).get('account','')
                 wx_user = make_wxuser_by_ctx(context)
                 if(user_object_id and user_object_id != wx_user.get('objectId')):                   
                     self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),
-                        "objectId": user_object_id,"account":wx_user.get("account"),"alias":wx_user.get("alias")})   
+                        "objectId": user_object_id,"account":gx_user_account,"alias":wx_user.get("alias")})   
+                if(gx_user_account and gx_user_account != wx_user.get('account')):                   
+                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),
+                        "objectId": user_object_id,"account":gx_user_account,"alias":wx_user.get("alias")})   
 
         logger.info(f"======>保存消息到groupx:{group_name}\n服务器返回:\n{ret}")
 
@@ -173,7 +178,7 @@ class FilterGroup(FilterBase):
         group = self._get_contact_info(wx_group_id, wx_group_nickname)
 
         logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
-        account = ""
+        account = user.get("account", "")
         ret = self._consume_tokens(account, user, group, total_tokens, completion_tokens, replyMsg,cmsg)
         if ret:
             # 写入服务器返回的account到user remarkname中
@@ -222,9 +227,9 @@ class FilterGroup(FilterBase):
                 "NickName": wx_group_nickname,
                 "RemarkName": "",
             }  # get_itchat_group(wx_group_id)
-
-            # rm = RemarkNameInfo(user.RemarkName)
-            account = ""  # rm.get_account()
+            
+            user = self._get_user_info(wx_user_id, wx_user_nickname)
+            account = user.get("account", "") if user else ""
             return self.groupx.post_chat_record_group_not_at(
                 account,
                 {
