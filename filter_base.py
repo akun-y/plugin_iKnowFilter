@@ -31,6 +31,7 @@ filter_base.py: iKnow过滤器基础类
 from bridge.bridge import Bridge
 from bridge.reply import ReplyType
 from bridge.context import ContextType
+from channel.contact_info import ContactInfo, make_contact_info
 from common.log import logger
 from config import conf, load_config
 from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
@@ -96,15 +97,18 @@ class FilterBase(object):
             "account": wx_user_account,
         }
         return ContactFromSrv(**user)
+         
+
     def _set_contact_info(self, contact:ContactFromSrv):
-        if not self.contacts_groupx:
-            return 
         if not contact.get("wxid", None):
+            logger.error("设置联系人信息失败: wxid 不能为空")
             return 
         if not contact.get("objectId", None):
+            logger.error("设置联系人信息失败: objectId 不能为空")
             return
-        self.contacts_groupx.add_contact(contact)
-        return 
+        self.contacts_groupx.set_contact(contact)
+        return
+
     def _get_contact_info(self, wx_group_id, wx_group_nickname):
         contact = self.contacts_groupx.get_contact(wx_group_id)
         group_object_id = contact.get("objectId", "")

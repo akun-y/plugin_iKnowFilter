@@ -16,41 +16,30 @@ filter_group.py - 群聊消息过滤器
 作者: Trae AI
 """
 
-import json
-import os
-from sys import prefix
 
-from bridge.bridge import Bridge
+from typing import Optional, TypedDict
 from bridge.reply import ReplyType
 
 # from lib import itchat
-from common.singleton import singleton
-import plugins
+from channel.contact_info import ContactInfo
 from bridge.context import ContextType
 from common.log import logger
 from plugins import *
-from channel.chat_channel import check_contain, check_prefix
-from plugins.plugin_comm.api.api_groupx import ApiGroupx
+from channel.chat_channel import check_contain
 
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
-from plugins.plugin_comm.groupx.groupx_users_man import GroupxUserMan
+from plugins.plugin_comm.groupx.groupx_users_man import ContactFromSrv, GroupxUserMan
 from plugins.plugin_comm.plugin_comm import (
-    EthZero,
-    find_actual_user_id_by_ctx,
     is_eth_address,
-    is_valid_string,
-    make_chat_sign_req,
     make_wxgroup_by_ctx,
     make_wxuser_by_ctx,
-    selectKeysForDict,
-    send_reg_msg,
-    send_text_with_url,
 )
 
 from plugins.plugin_iKnowFilter.filter_base import FilterBase
 
+
 class FilterGroup(FilterBase):
-    def __init__(self, config, groupx, contacts_groupx:GroupxUserMan):
+    def __init__(self, config, groupx, contacts_groupx: GroupxUserMan):
         super().__init__(config, groupx, contacts_groupx)
         if self.config:
             self.filter_config = self.config.get("group_filter")
@@ -69,29 +58,41 @@ class FilterGroup(FilterBase):
 
         content = context.content
         msg = context.get("msg")
-        group_name = msg.other_user_nickname or msg.from_user_nickname
-        group_id = msg.other_user_id or msg.from_user_id
+        
+        wx_group = make_wxgroup_by_ctx(context)
+        group_name = wx_group.get("name", "")
+        wx_user = make_wxuser_by_ctx(context)
         # 1- 保存消息到数据库
         ret = self._post_group_msg(msg)
 
-        if ret :
-            results =  ret.get("results",None)
-            if results and len(results)>0:
-                group_object_id = results[0].get('groupOID','')
+        if ret:
+            results = ret.get("results", None)
+            if results and len(results) > 0:
+                group_object_id = results[0].get("groupOID", "")
                 wx_group = make_wxgroup_by_ctx(context)
-                if(group_object_id and group_object_id != wx_group.get('objectId')):
-                    self._set_contact_info({"wxid": group_id,"name": group_name,"objectId": group_object_id,"account":'',"alias":''})       
-                
+                if group_object_id and group_object_id != wx_group.get("objectId"):
+                    self._set_contact_info({**wx_group,"objectId": group_object_id})
+
                 # 设置 user objectId
-                user_object_id = results[0].get('userOID','')                
-                gx_user_account = results[0].get('result',{}).get('account','')
+                user_object_id = results[0].get("userOID", "")
+                gx_user_account = results[0].get("result", {}).get("account", "")
                 wx_user = make_wxuser_by_ctx(context)
-                if(user_object_id and user_object_id != wx_user.get('objectId')):                   
-                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),
-                        "objectId": user_object_id,"account":gx_user_account,"alias":wx_user.get("alias")})   
-                if(gx_user_account and gx_user_account != wx_user.get('account')):                   
-                    self._set_contact_info({"wxid": wx_user.get("wxid"),"name": wx_user.get("name"),
-                        "objectId": user_object_id,"account":gx_user_account,"alias":wx_user.get("alias")})   
+                if user_object_id and user_object_id != wx_user.get("objectId"):
+                    self._set_contact_info(
+                        {
+                            **wx_user,
+                            "objectId": user_object_id,
+                            "account": gx_user_account
+                        }
+                    )
+                if gx_user_account and gx_user_account != wx_user.get("account"):
+                    self._set_contact_info(
+                        { 
+                            **wx_user,
+                            "objectId": user_object_id,
+                            "account": gx_user_account
+                        }
+                    )
 
         logger.info(f"======>保存消息到groupx:{group_name}\n服务器返回:\n{ret}")
 
@@ -101,12 +102,11 @@ class FilterGroup(FilterBase):
             return  # 转给系统及其他插件
 
         # 3- 是机器人发出的消息， 终止处理
-        if msg.my_msg :
+        if msg.my_msg:
             logger.warning("--->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
 
-        
         # 4- 无关键字也继续派发给其他插件处理
         if (
             group_name in self.group_chat_keyword_ignore
@@ -179,17 +179,18 @@ class FilterGroup(FilterBase):
 
         logger.warn(f"======>应答:文字内容,计费 {wx_user_nickname} {wx_group_nickname}")
         account = user.get("account", "")
-        ret = self._consume_tokens(account, user, group, total_tokens, completion_tokens, replyMsg,cmsg)
+        ret = self._consume_tokens(
+            account, user, group, total_tokens, completion_tokens, replyMsg, cmsg
+        )
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
                 pass
-                
+
                 # rm.set_account(ret["account"])
                 # itchat.set_alias(user.UserName, rm.get_remark_name())
                 # user.update()
                 # itchat.dump_login_status()
-
 
             balance = ret["balanceAITokens"]
             if ret["success"] is False:
@@ -217,19 +218,16 @@ class FilterGroup(FilterBase):
 
             wx_group_id = cmsg.other_user_id
             wx_group_nickname = cmsg.other_user_nickname
-            user = {
-                "UserName": wx_user_id,
-                "NickName": wx_user_nickname,
-                "RemarkName": "",
-            }  # get_itchat_user(wx_user_id)
+
             group = {
                 "UserName": wx_group_id,
                 "NickName": wx_group_nickname,
                 "RemarkName": "",
             }  # get_itchat_group(wx_group_id)
-            
+
             user = self._get_user_info(wx_user_id, wx_user_nickname)
             account = user.get("account", "") if user else ""
+
             return self.groupx.post_chat_record_group_not_at(
                 account,
                 {
@@ -242,12 +240,11 @@ class FilterGroup(FilterBase):
                     "is_group": cmsg.is_group,
                     "time": cmsg.create_time,
                     "msgid": cmsg.msg_id,
-                    "thumb": getattr(cmsg._rawmsg, 'thumb', ""),
-                    "extra": getattr(cmsg._rawmsg, 'extra', ""),
-                    "source": "wcferry" if getattr(cmsg, 'scf', False) else "",
-                    "system_name": getattr(self, 'system_name', ""),
+                    "thumb": getattr(cmsg._rawmsg, "thumb", ""),
+                    "extra": getattr(cmsg._rawmsg, "extra", ""),
+                    "source": "wcferry" if getattr(cmsg, "scf", False) else "",
+                    "system_name": getattr(self, "system_name", ""),
                 },
             )
         except Exception as e:
             logger.error(f"======>[IKnowFilter] _post_group_msg fail {e}")
-
