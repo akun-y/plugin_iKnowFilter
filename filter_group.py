@@ -28,7 +28,9 @@ from plugins import *
 from channel.chat_channel import check_contain
 
 # from plugins.plugin_comm.remark_name_info import RemarkNameInfo
-from plugins.plugin_comm.groupx.groupx_users_man import ContactFromSrv, GroupxUserMan
+from plugins.plugin_comm.constants import EthZero
+from plugins.plugin_comm.contacts.mycontacts import contact_to_groupx_channel, get_chatroom_form_channel
+from plugins.plugin_comm.groupx.groupx_users_man import ContactFromSrv, ContactFromSrv_to_groupx, GroupxUserMan
 from plugins.plugin_comm.plugin_comm import (
     is_eth_address,
     make_wxgroup_by_ctx,
@@ -52,6 +54,8 @@ class FilterGroup(FilterBase):
         )
         # 约定前缀的，转给系统及其它插件处理
         self.prefix_array = self.filter_config.get("group_forward_prefix") or []
+        self.robot_account = conf().get("bot_account", EthZero)
+        self.robot_name = conf().get("bot_name")
 
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
@@ -69,9 +73,28 @@ class FilterGroup(FilterBase):
             results = ret.get("results", None)
             if results and len(results) > 0:
                 group_object_id = results[0].get("groupOID", "")
+                missingItemsGroup = ret.get("missingItemsGroup", None)
                 wx_group = make_wxgroup_by_ctx(context)
                 if group_object_id and group_object_id != wx_group.get("objectId"):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
+                if missingItemsGroup:
+                    channel_type = conf().get("channel_type", "wx") or 'wx'
+                    chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"))
+                    if chatroom:
+                        # 将wx_group 和 chatroom 合并
+                        member_list= chatroom.get("member_list")
+                        if member_list:
+                            # 为 member_list 所有成员调用contact_to_groupx_channel 转换为groupx 格式
+                            member_list = [contact_to_groupx_channel(channel_type,member) for member in member_list]
+                            #contact_to_groupx_channel(channel_type, wx_group.get("wxid"), member_list)                        
+                            wx_group["member_list"]= member_list
+                            groupx_contact = ContactFromSrv_to_groupx(wx_group)
+                            # 如需后续使用 merged_group，可替换下方 chatroom 为 merged_group
+                        
+                            self.groupx.post_groups( self.robot_account, self.robot_name, [groupx_contact], channel_type)
+                            logger.info("群组信息不完整，补充信息，如：MemberList")
+                    else:
+                        logger.error("获取群成员及详细信息失败")
 
                 # 设置 user objectId
                 user_object_id = results[0].get("userOID", "")
@@ -93,6 +116,7 @@ class FilterGroup(FilterBase):
                             "account": gx_user_account
                         }
                     )
+                
 
         logger.info(f"======>保存消息到groupx:{group_name}\n服务器返回:\n{ret}")
 
