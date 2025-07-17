@@ -74,10 +74,11 @@ class FilterGroup(FilterBase):
             if results and len(results) > 0:
                 group_object_id = results[0].get("groupOID", "")
                 missingItemsGroup = ret.get("missingItemsGroup", None)
+                memberCount = ret.get("memberCount", 0)
                 wx_group = make_wxgroup_by_ctx(context)
                 if group_object_id and group_object_id != wx_group.get("objectId"):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
-                if missingItemsGroup:
+                if missingItemsGroup or memberCount < 1:
                     channel_type = conf().get("channel_type", "wx") or 'wx'
                     chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"))
                     if chatroom:
