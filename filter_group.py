@@ -80,7 +80,7 @@ class FilterGroup(FilterBase):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
                 if missingItemsGroup or memberCount < 1:
                     channel_type = conf().get("channel_type", "wx") or 'wx'
-                    chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"))
+                    chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"), msg)
                     if chatroom:
                         # 将wx_group 和 chatroom 合并
                         member_list= chatroom.get("member_list")
@@ -93,7 +93,7 @@ class FilterGroup(FilterBase):
                             # 如需后续使用 merged_group，可替换下方 chatroom 为 merged_group
                         
                             self.groupx.post_groups( self.robot_account, self.robot_name, [groupx_contact], channel_type)
-                            logger.info("群组信息不完整，补充信息，如：MemberList")
+                            logger.warn(f"群{group_name}信息不完整，补充信息，群成员个数 {len(member_list)}")
                     else:
                         logger.error("获取群成员及详细信息失败")
 
