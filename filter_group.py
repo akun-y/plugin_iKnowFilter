@@ -79,6 +79,7 @@ class FilterGroup(FilterBase):
                 if group_object_id and group_object_id != wx_group.get("objectId"):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
                 if missingItemsGroup or memberCount < 1:
+                    logger.warn(f"[filtGrp] 需要补充群信息: {msg}")
                     channel_type = conf().get("channel_type", "wx") or 'wx'
                     chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"), msg)
                     if chatroom:
