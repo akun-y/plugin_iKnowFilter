@@ -68,7 +68,7 @@ class FilterGroup(FilterBase):
         wx_user = make_wxuser_by_ctx(context)
         # 1- 保存消息到数据库
         ret = self._post_group_msg(msg)
-
+        logger.info(f"[filtGrp] ======>保存消息到groupx:群:{group_name}\n服务器返回:\n{ret}")
         if ret:
             results = ret.get("results", None)
             if results and len(results) > 0:
@@ -79,7 +79,7 @@ class FilterGroup(FilterBase):
                 if group_object_id and group_object_id != wx_group.get("objectId"):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
                 if missingItemsGroup or memberCount < 1:
-                    logger.warn(f"[filtGrp] 需要补充群信息: {msg}")
+                    logger.warn(f"[filtGrp] 需要补充群信息,msg:{msg}")
                     channel_type = conf().get("channel_type", "wx") or 'wx'
                     chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"), msg)
                     if chatroom:
@@ -94,9 +94,9 @@ class FilterGroup(FilterBase):
                             # 如需后续使用 merged_group，可替换下方 chatroom 为 merged_group
                         
                             self.groupx.post_groups( self.robot_account, self.robot_name, [groupx_contact], channel_type)
-                            logger.warn(f"群{group_name}信息不完整，补充信息，群成员个数 {len(member_list)}")
+                            logger.warn(f"[filtGrp] [{group_name}]群信息不完整，补充发送给服务器:{groupx_contact}")
                     else:
-                        logger.error("获取群成员及详细信息失败")
+                        logger.error("[filtGrp] 获取群成员及详细信息失败")
 
                 # 设置 user objectId
                 user_object_id = results[0].get("userOID", "")
@@ -118,18 +118,15 @@ class FilterGroup(FilterBase):
                             "account": gx_user_account
                         }
                     )
-                
-
-        logger.info(f"======>保存消息到groupx:{group_name}\n服务器返回:\n{ret}")
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
-            logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理 {msg.content}")
+            logger.warn(f"[filtGrp] =====>是带有约定前缀的，转给系统及其它插件处理 {msg.content}")
             return  # 转给系统及其他插件
 
         # 3- 是机器人发出的消息， 终止处理
         if msg.my_msg:
-            logger.warning("--->group filter:我自己发出的消息")
+            logger.warning("[filtGrp] --->group filter:我自己发出的消息")
             e_context.action = EventAction.BREAK_PASS  # 不响应
             return
 
@@ -139,7 +136,7 @@ class FilterGroup(FilterBase):
             or "ALL_GROUP" in self.group_white_list
         ):
             logger.info(
-                f"[iKnowFilter] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
+                f"[filtGrp] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
             )  # 频率非常高
             return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
@@ -150,7 +147,7 @@ class FilterGroup(FilterBase):
             e_context.action = EventAction.BREAK_PASS
             return  # 不响应,中止
 
-        # logger.info(f"[iKnowFilter]群在白名单中,继续处理 {group_name}")  # 频率非常高
+        # logger.info(f"[filtGrp]群在白名单中,继续处理 {group_name}")  # 频率非常高
 
         # 非文字内容,只记录不处理
         if context.type not in [ContextType.TEXT]:  # 转给其他插件处理
@@ -220,7 +217,7 @@ class FilterGroup(FilterBase):
 
             balance = ret["balanceAITokens"]
             if ret["success"] is False:
-                logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
+                logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
                 # itchat.send_msg(msg, toUserName=to_user_id)
                 #    send_text_with_url(
                 #        e_context,
@@ -229,9 +226,9 @@ class FilterGroup(FilterBase):
                 #    )
 
                 return
-            logger.warn(f"======>[IKnowFilter] consumeTokens successl {ret}")
+            logger.warn(f"======>[filtGrp] consumeTokens successl {ret}")
         else:
-            logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
+            logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。
             # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
             # e_context.action = EventAction.BREAK_PASS
@@ -273,4 +270,4 @@ class FilterGroup(FilterBase):
                 },
             )
         except Exception as e:
-            logger.error(f"======>[IKnowFilter] _post_group_msg fail {e}")
+            logger.error(f"======>[filtGrp] _post_group_msg fail {e}")
