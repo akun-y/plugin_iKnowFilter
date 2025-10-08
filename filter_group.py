@@ -250,7 +250,12 @@ class FilterGroup(FilterBase):
 
             user = self._get_user_info(wx_user_id, wx_user_nickname)
             account = user.get("account", "") if user else ""
-
+            source = ""
+            if getattr(cmsg, "scf", False):
+                source = "wcferry"
+            elif getattr(cmsg, "wework", False):
+                source = "wework"
+            
             return self.groupx.post_chat_record_group_not_at(
                 account,
                 {
@@ -265,7 +270,7 @@ class FilterGroup(FilterBase):
                     "msgid": cmsg.msg_id,
                     "thumb": getattr(cmsg._rawmsg, "thumb", ""),
                     "extra": getattr(cmsg._rawmsg, "extra", ""),
-                    "source": "wcferry" if getattr(cmsg, "scf", False) else "",
+                    "source": source,
                     "system_name": getattr(self, "system_name", ""),
                 },
             )
