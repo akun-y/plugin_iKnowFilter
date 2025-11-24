@@ -35,6 +35,7 @@ from plugins.plugin_comm.plugin_comm import (
     is_eth_address,
     make_wxgroup_by_ctx,
     make_wxuser_by_ctx,
+    send_text_with_url,
 )
 
 from plugins.plugin_iKnowFilter.filter_base import FilterBase
@@ -218,20 +219,21 @@ class FilterGroup(FilterBase):
             balance = ret["balanceAITokens"]
             if ret["success"] is False:
                 logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
-                # itchat.send_msg(msg, toUserName=to_user_id)
-                #    send_text_with_url(
-                #        e_context,
-                #        f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                #        self.recharge_url,
-                #    )
-
+                #itchat.send_msg(msg, toUserName=to_user_id)
+                send_text_with_url(
+                    e_context,f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
+                    self.recharge_url,)
+                e_context.action = EventAction.BREAK_PASS
                 return
             logger.warn(f"======>[filtGrp] consumeTokens successl {ret}")
         else:
             logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
-            # 未注册用户暂时不禁用。
-            # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
-            # e_context.action = EventAction.BREAK_PASS
+            send_text_with_url(
+                e_context,
+                "消费积分失败，请点击链接注册。",
+                self.reg_url,
+            )
+            e_context.action = EventAction.BREAK_PASS
             return
 
     def _post_group_msg(self, cmsg):

@@ -145,18 +145,19 @@ class FilterUser(FilterBase):
             if balance < -3000 or ret["success"] is False:
                 logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
                 
-                # send_text_with_url(
-                #     e_context,
-                #     f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                #     self.recharge_url,
-                # )
+                send_text_with_url(
+                    e_context,
+                    f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
+                    self.recharge_url,
+                )
+                e_context.action = EventAction.BREAK_PASS
                 return
             logger.warn(f"======>[IKnowFilter] consumeTokens success {ret}")
         else:
             logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
             # 未注册用户暂时不禁用。
-            # send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
-            # e_context.action = EventAction.BREAK_PASS
+            send_text_reg(e_context, f"消费积分失败，请点击链接注册。")
+            e_context.action = EventAction.BREAK_PASS
             return
 
     def _post_user_msg(self, cmsg):
