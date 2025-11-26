@@ -209,20 +209,19 @@ class FilterGroup(FilterBase):
         if ret:
             # 写入服务器返回的account到user remarkname中
             if is_eth_address(ret["account"]) and account != ret["account"]:
-                pass
-
-                # rm.set_account(ret["account"])
-                # itchat.set_alias(user.UserName, rm.get_remark_name())
-                # user.update()
-                # itchat.dump_login_status()
+                self._set_contact_info({ 
+                        **user,
+                        "account": ret["account"]
+                    })
 
             balance = ret["balanceAITokens"]
             if ret["success"] is False:
                 logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
                 #itchat.send_msg(msg, toUserName=to_user_id)
                 send_text_with_url(
-                    e_context,f"积分不足，为不影响您正常使用，请及时充值。\n(余额: {balance})",
-                    self.recharge_url,)
+                    e_context,f"积分不足，请及时充值或购买套餐。\n(余额: {balance})",
+                    ret.get('payMiniAppUrl',self.recharge_url),
+                )
                 e_context.action = EventAction.BREAK_PASS
                 return
             logger.warn(f"======>[filtGrp] consumeTokens successl {ret}")
