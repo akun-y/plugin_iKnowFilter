@@ -218,22 +218,30 @@ class FilterGroup(FilterBase):
             if ret["success"] is False:
                 logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
                 #itchat.send_msg(msg, toUserName=to_user_id)
-                send_text_with_url(
-                    e_context,f"积分不足，请及时充值或购买套餐。\n(余额: {balance})",
-                    ret.get('payMiniAppUrl',self.recharge_url),
-                )
-                e_context.action = EventAction.BREAK_PASS
-                return
+                chat_billing_enabled = conf().get("chat_billing_enabled", False)
+                if chat_billing_enabled:
+                    send_text_with_url(
+                        e_context,f"积分不足，请及时充值或购买套餐。\n(余额: {balance})",
+                        ret.get('payMiniAppUrl',self.recharge_url),
+                    )
+                    e_context.action = EventAction.BREAK_PASS
+                    return
+                else:
+                    logger.warn(f"======>[filtGrp] 积分不足但聊天收费开关未开启，允许继续使用。余额: {balance}")
             logger.warn(f"======>[filtGrp] consumeTokens successl {ret}")
         else:
             logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
-            send_text_with_url(
-                e_context,
-                "消费积分失败，请点击链接注册。",
-                self.reg_url,
-            )
-            e_context.action = EventAction.BREAK_PASS
-            return
+            chat_billing_enabled = conf().get("chat_billing_enabled", False)
+            if chat_billing_enabled:
+                send_text_with_url(
+                    e_context,
+                    "消费积分失败，请点击链接注册。",
+                    self.reg_url,
+                )
+                e_context.action = EventAction.BREAK_PASS
+                return
+            else:
+                logger.warn(f"======>[filtGrp] 消费积分失败但聊天收费开关未开启，允许继续使用。")
 
     def _post_group_msg(self, cmsg):
         try:
