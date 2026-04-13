@@ -52,7 +52,7 @@ class FilterBase(object):
         self.agent_name = conf().get("bot_name")
         self.system_name = conf().get("system_name")
         self.reg_url = conf().get("iknow_reg_url")
-        self.recharge_url = conf().get("iknow_recharge_url")
+        self.recharge_url = config.get("iknow_recharge_url")
         self.oper_dict = {
             "create_img": "生成图片",
             "summary_file": "生成文件摘要",
