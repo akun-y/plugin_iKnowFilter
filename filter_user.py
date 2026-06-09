@@ -69,30 +69,55 @@ class FilterUser(FilterBase):
             f"--->grooup filter 包含关键字,继续:{content}  {msg.actual_user_nickname}"
         )  # 转系统及其他插件处理
 
+    def on_receive_message(self, e_context: EventContext):
+        """私聊消息接收时上报 groupx，不依赖触发前缀，确保所有私聊都会保存。"""
+        context = e_context["context"]
+        msg = context.get("msg")
+        if not msg or msg.my_msg:
+            return
+
+        ret = self._post_user_msg(msg)
+        context["groupx_post_result"] = ret
+        logger.warn(
+            f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type', None)}"
+        )
+        self._handle_groupx_post_result(context, msg, ret)
+
+    def _handle_groupx_post_result(self, context, msg, ret):
+        if not ret:
+            return
+        results = ret.get("results", None)
+        if not results:
+            logger.info(f"======>保存消息到groupx\n 服务器返回:\n{ret}")
+            return
+
+        group_object_id = results[0].get("groupOID", "")
+        self._set_contact_info(
+            {"wxid": msg.to_user_id, "name": msg.to_user_nickname, "objectId": group_object_id}
+        )
+        if results[0].get("sendResult", False):
+            context["groupx_server_replied"] = True
+        logger.info(f"======>保存消息到groupx\n 服务器返回:\n{ret}")
+
     def before_handle_context(self, e_context: EventContext):
         context = e_context["context"]
         
         content = context.content
         msg = context.get("msg")
 
-        # 1- 保存消息到数据库
-        ret = self._post_user_msg(msg)
-        logger.warn(f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type',None)}")
-        
-        # 如果服务器做了应答,不再转其他插件处理
-        if ret :
-            results =  ret.get("results",None)
-            if results and len(results)>0:
-                group_object_id = results[0].get('groupOID','')
-                self._set_contact_info({"wxid": msg.to_user_id,"name": msg.to_user_nickname,"objectId": group_object_id})  
-                
-                send_result =  results[0].get("sendResult",False)  
-                if send_result:               
-                    logger.warn(f"======>[IKnowFilter] 服务器做了应答,不再转其他插件处理")
-                    e_context.action = EventAction.BREAK_PASS  # 不响应
-                    return          
+        ret = context.get("groupx_post_result")
+        if ret is None and msg and not msg.my_msg:
+            ret = self._post_user_msg(msg)
+            context["groupx_post_result"] = ret
+            logger.warn(
+                f"======>[IKnowFilter] 私聊 _post_user_msg success {ret} {context.get('type', None)}"
+            )
+            self._handle_groupx_post_result(context, msg, ret)
 
-        logger.info(f"======>保存消息到groupx\n 服务器返回:\n{ret}")
+        if context.get("groupx_server_replied"):
+            logger.warn(f"======>[IKnowFilter] 服务器做了应答,不再转其他插件处理")
+            e_context.action = EventAction.BREAK_PASS
+            return
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         # if any(content.startswith(item) for item in self.prefix_array):
         #     logger.warn(f"=====>是带有约定前缀的，转给系统及其它插件处理")
@@ -112,7 +137,10 @@ class FilterUser(FilterBase):
             logger.info("===>@我的")
             return  # 转给系统及其他插件
 
-        
+        if not conf().get("single_chat_ai_enabled", True):
+            logger.info("======>[IKnowFilter] 私聊本地AI已关闭，消息已保存到服务器")
+            e_context.action = EventAction.BREAK_PASS
+            return
 
     def before_send_reply(self, e_context: EventContext):
         if e_context["reply"].type not in [ReplyType.TEXT, ReplyType.IMAGE]:

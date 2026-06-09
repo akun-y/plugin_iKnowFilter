@@ -39,6 +39,7 @@ class IKnowFilter(Plugin):
         self.filter_user = FilterUser(self.config,self.groupx,self.contacts_groupx)
         self.filter_group = FilterGroup(self.config,self.groupx,self.contacts_groupx)
 
+        self.handlers[Event.ON_RECEIVE_MESSAGE] = self.on_receive_message
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
 
@@ -56,6 +57,12 @@ class IKnowFilter(Plugin):
             self.filter_group.before_send_reply(e_context)
             return
         self.filter_user.before_send_reply(e_context)
+
+    def on_receive_message(self, e_context: EventContext):
+        context: Dict[str, Any] = e_context["context"]
+        if context.get("isgroup"):
+            return
+        self.filter_user.on_receive_message(e_context)
 
     def on_handle_context(self, e_context: EventContext):
         context: Dict[str, Any] = e_context["context"]
