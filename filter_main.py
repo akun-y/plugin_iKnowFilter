@@ -42,6 +42,7 @@ class IKnowFilter(Plugin):
         self.handlers[Event.ON_RECEIVE_MESSAGE] = self.on_receive_message
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         self.handlers[Event.ON_SEND_REPLY] = self.on_send_reply
+        self.handlers[Event.ON_RELATION] = self.on_relation
 
         self.refresh_global_config()
         
@@ -62,7 +63,30 @@ class IKnowFilter(Plugin):
         context: Dict[str, Any] = e_context["context"]
         if context.get("isgroup"):
             return
+        if not self.groupx.cow_token:
+            return
         self.filter_user.on_receive_message(e_context)
+
+    def on_relation(self, e_context: EventContext):
+        relation = e_context["relation"] if isinstance(e_context["relation"], dict) else {}
+        kind = relation.get("kind") or ""
+        logger.warning(
+            f"[IKnowFilter] 关系事件 kind={kind or '(空)'} "
+            f"conversation_id={relation.get('conversation_id') or '(空)'} "
+            f"user_id={relation.get('user_id') or '(空)'} room_name={relation.get('room_name') or '(空)'}"
+        )
+        if not self.groupx.cow_token:
+            if kind in ("self_profile", "self_logout"):
+                try:
+                    self.groupx.post_relation(self.filter_group.robot_account, self.filter_group.robot_name, relation)
+                except Exception as exc:
+                    logger.error(f"[IKnowFilter] 关系事件提交失败 kind={kind} error={exc}")
+            return
+        try:
+            ret = self.groupx.post_relation(self.filter_group.robot_account, self.filter_group.robot_name, relation)
+            logger.warning(f"[IKnowFilter] 关系事件已提交 groupx kind={kind} ret={ret}")
+        except Exception as exc:
+            logger.error(f"[IKnowFilter] 关系事件提交失败 kind={kind} error={exc}")
 
     def on_handle_context(self, e_context: EventContext):
         context: Dict[str, Any] = e_context["context"]

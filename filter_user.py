@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from sys import prefix
 
 from bridge.bridge import Bridge
@@ -27,6 +28,7 @@ from plugins.plugin_comm.plugin_comm import (
     make_wxuser_by_ctx,
     selectKeysForDict,
     send_reg_msg,
+    send_text,
     send_text_with_url,
 )
 
@@ -95,8 +97,11 @@ class FilterUser(FilterBase):
         self._set_contact_info(
             {"wxid": msg.to_user_id, "name": msg.to_user_nickname, "objectId": group_object_id}
         )
+        result_body = results[0].get("result") or {}
         if results[0].get("sendResult", False):
             context["groupx_server_replied"] = True
+        elif (result_body.get("showText") or result_body.get("showText2")):
+            context["groupx_pending_show_text"] = True
         logger.info(f"======>保存消息到groupx\n 服务器返回:\n{ret}")
 
     def before_handle_context(self, e_context: EventContext):
@@ -106,7 +111,7 @@ class FilterUser(FilterBase):
         msg = context.get("msg")
 
         ret = context.get("groupx_post_result")
-        if ret is None and msg and not msg.my_msg:
+        if ret is None and msg and not msg.my_msg and self.groupx.cow_token:
             ret = self._post_user_msg(msg)
             context["groupx_post_result"] = ret
             logger.warn(
@@ -116,6 +121,21 @@ class FilterUser(FilterBase):
 
         if context.get("groupx_server_replied"):
             logger.warn(f"======>[IKnowFilter] 服务器做了应答,不再转其他插件处理")
+            e_context.action = EventAction.BREAK_PASS
+            return
+        if context.get("groupx_pending_show_text"):
+            ret = context.get("groupx_post_result") or {}
+            results = ret.get("results") or []
+            result_body = (results[0].get("result") if results else {}) or {}
+            show_text = (result_body.get("showText") or "").strip()
+            show_text2 = (result_body.get("showText2") or "").strip()
+            if show_text:
+                send_text(e_context, show_text)
+                logger.warning(f"======>[IKnowFilter] 已发送服务端答复 showText len={len(show_text)}")
+            if show_text2:
+                time.sleep(1.2)
+                send_text(e_context, show_text2)
+                logger.warning(f"======>[IKnowFilter] 已发送服务端答复 showText2 len={len(show_text2)}")
             e_context.action = EventAction.BREAK_PASS
             return
         # 2- 是带有约定前缀的，转给系统及其它插件处理

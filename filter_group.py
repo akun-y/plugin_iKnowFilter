@@ -17,6 +17,8 @@ filter_group.py - 群聊消息过滤器
 """
 
 
+import json
+import time
 from typing import Optional, TypedDict
 from bridge.reply import ReplyType
 
@@ -35,10 +37,21 @@ from plugins.plugin_comm.plugin_comm import (
     is_eth_address,
     make_wxgroup_by_ctx,
     make_wxuser_by_ctx,
+    send_text,
     send_text_with_url,
 )
 
 from plugins.plugin_iKnowFilter.filter_base import FilterBase
+
+
+def _brief_result(ret):
+    try:
+        text = json.dumps(ret, ensure_ascii=False, default=str)
+    except TypeError:
+        text = str(ret)
+    if len(text) > 500:
+        text = text[:500] + "...(截断)"
+    return text
 
 
 class FilterGroup(FilterBase):
@@ -67,19 +80,22 @@ class FilterGroup(FilterBase):
         wx_group = make_wxgroup_by_ctx(context)
         group_name = wx_group.get("name", "")
         wx_user = make_wxuser_by_ctx(context)
-        # 1- 保存消息到数据库
-        ret = self._post_group_msg(msg)
-        logger.info(f"[filtGrp] ======>保存消息到groupx:群:{group_name}\n服务器返回:\n{ret}")
+        # 1- 保存消息到数据库。未授权时不访问 API
+        ret = None
+        if self.groupx.cow_token:
+            ret = self._post_group_msg(msg)
+            logger.info(f"[filtGrp] ======>保存消息到groupx:群:{group_name}\n服务器返回:\n{ret}")
         if ret:
             results = ret.get("results", None)
             if results and len(results) > 0:
                 group_object_id = results[0].get("groupOID", "")
                 missingItemsGroup = ret.get("missingItemsGroup", None)
                 memberCount = ret.get("memberCount", 0)
+                result_body = results[0].get("result") or {}
                 wx_group = make_wxgroup_by_ctx(context)
                 if group_object_id and group_object_id != wx_group.get("objectId"):
                     self._set_contact_info({**wx_group,"objectId": group_object_id})
-                if missingItemsGroup or memberCount < 1:
+                if context.type != ContextType.JOIN_GROUP and (missingItemsGroup or memberCount < 1):
                     logger.warn(f"[filtGrp] 需要补充群信息,msg:{msg}")
                     channel_type = conf().get("channel_type", "wx") or 'wx'
                     chatroom = get_chatroom_form_channel(channel_type, wx_group.get("wxid"), msg)
@@ -101,7 +117,7 @@ class FilterGroup(FilterBase):
 
                 # 设置 user objectId
                 user_object_id = results[0].get("userOID", "")
-                gx_user_account = results[0].get("result", {}).get("account", "")
+                gx_user_account = result_body.get("account", "")
                 wx_user = make_wxuser_by_ctx(context)
                 if user_object_id and user_object_id != wx_user.get("objectId"):
                     self._set_contact_info(
@@ -119,6 +135,24 @@ class FilterGroup(FilterBase):
                             "account": gx_user_account
                         }
                     )
+
+                # 服务端已生成打卡/卡路里答复但未发出时，由本机发到群并停止后续 AI
+                if not results[0].get("sendResult"):
+                    show_text = (result_body.get("showText") or "").strip()
+                    show_text2 = (result_body.get("showText2") or "").strip()
+                    if show_text or show_text2:
+                        if show_text:
+                            send_text(e_context, show_text)
+                            logger.warning(f"[filtGrp] 已发送服务端答复 showText len={len(show_text)}")
+                        if show_text2:
+                            time.sleep(1.2)
+                            send_text(e_context, show_text2)
+                            logger.warning(f"[filtGrp] 已发送服务端答复 showText2 len={len(show_text2)}")
+                        e_context.action = EventAction.BREAK_PASS
+                        return
+
+        if context.type == ContextType.JOIN_GROUP and self.groupx.cow_token:
+            self._push_join_group(context, wx_group)
 
         # 2- 是带有约定前缀的，转给系统及其它插件处理
         if any(msg.content.startswith(item) for item in self.prefix_array):
@@ -242,6 +276,49 @@ class FilterGroup(FilterBase):
                 return
             else:
                 logger.warn(f"======>[filtGrp] 消费积分失败但聊天收费开关未开启，允许继续使用。")
+
+    def _push_join_group(self, context, wx_group):
+        """入群后把这一群的成员和新成员推到 groupx。群名为空时不覆盖服务器上的群名。"""
+        msg = context.get("msg")
+        group_id = wx_group.get("wxid") or getattr(msg, "other_user_id", "")
+        group_name = wx_group.get("name") or getattr(msg, "other_user_nickname", "") or ""
+        channel_type = conf().get("channel_type", "wx") or "wx"
+        chatroom = get_chatroom_form_channel(channel_type, group_id, msg)
+        raw_members = chatroom.get("member_list") if isinstance(chatroom, dict) else None
+        members = [
+            contact_to_groupx_channel(channel_type, member)
+            for member in (raw_members or [])
+            if isinstance(member, dict)
+        ]
+        payload = {"UserName": group_id, "MemberList": members}
+        if group_name:
+            payload["NickName"] = group_name
+        logger.info(
+            f"[filtGrp] 入群推送群资料 group={group_id} name={group_name or '(空)'} members={len(members)}"
+        )
+        try:
+            ret = self.groupx.post_groups(self.robot_account, self.robot_name, [payload], channel_type)
+            logger.info(f"[filtGrp] 入群群资料返回: {_brief_result(ret)}")
+        except Exception as exc:
+            logger.error(f"[filtGrp] 入群群资料失败: {exc}")
+
+        contacts = getattr(msg, "join_contacts", None) or []
+        friends = [
+            contact_to_groupx_channel(channel_type, contact)
+            for contact in contacts
+            if isinstance(contact, dict)
+        ]
+        logger.info(
+            f"[filtGrp] 入群推送新成员通讯录 count={len(friends)} "
+            f"ids={[contact.get('user_id') for contact in contacts if isinstance(contact, dict)]}"
+        )
+        if not friends:
+            return
+        try:
+            ret = self.groupx.post_friends(self.robot_account, self.robot_name, friends, channel_type)
+            logger.info(f"[filtGrp] 入群通讯录返回: {_brief_result(ret)}")
+        except Exception as exc:
+            logger.error(f"[filtGrp] 入群通讯录失败: {exc}")
 
     def _post_group_msg(self, cmsg):
         try:
