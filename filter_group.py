@@ -54,6 +54,34 @@ def _brief_result(ret):
     return text
 
 
+def _groupx_result_summary(ret, group_name: str = "") -> str:
+    """INFO 用的一行摘要：tasks / 是否有答复 / sendResult，便于对照无应答原因。"""
+    if not isinstance(ret, dict):
+        return f"[filtGrp] groupx 返回异常 group={group_name} raw={_brief_result(ret)}"
+    results = ret.get("results") or []
+    first = results[0] if results else {}
+    body = (first.get("result") if isinstance(first, dict) else None) or {}
+    tasks = body.get("doneTasks") or []
+    if isinstance(tasks, list):
+        tasks_s = ",".join(str(t) for t in tasks) or "-"
+    else:
+        tasks_s = str(tasks)
+    show_len = len(str(body.get("showText") or "").strip())
+    show2_len = len(str(body.get("showText2") or "").strip())
+    err = str(body.get("error") or "").strip()
+    err_s = f" error={err[:80]}" if err else ""
+    return (
+        f"[filtGrp] groupx ok group={group_name} "
+        f"record={ret.get('recordId') or '-'} "
+        f"userOID={first.get('userOID') or '-'} "
+        f"groupOID={first.get('groupOID') or '-'} "
+        f"tasks={tasks_s} "
+        f"reply_len={show_len}+{show2_len} "
+        f"sendResult={first.get('sendResult')}"
+        f"{err_s}"
+    )
+
+
 class FilterGroup(FilterBase):
     def __init__(self, config, groupx, contacts_groupx: GroupxUserMan):
         super().__init__(config, groupx, contacts_groupx)
@@ -84,7 +112,8 @@ class FilterGroup(FilterBase):
         ret = None
         if self.groupx.cow_token:
             ret = self._post_group_msg(msg)
-            logger.info(f"[filtGrp] ======>保存消息到groupx:群:{group_name}\n服务器返回:\n{ret}")
+            logger.info(_groupx_result_summary(ret, group_name))
+            logger.debug(f"[filtGrp] groupx raw group={group_name} {_brief_result(ret)}")
         if ret:
             results = ret.get("results", None)
             if results and len(results) > 0:
@@ -170,9 +199,9 @@ class FilterGroup(FilterBase):
             group_name in self.group_chat_keyword_ignore
             or "ALL_GROUP" in self.group_white_list
         ):
-            logger.info(
-                f"[filtGrp] --->group filter:群在'关键字'忽略名单中,继续处理 {group_name}"
-            )  # 频率非常高
+            logger.debug(
+                f"[filtGrp] keyword_ignore continue group={group_name}"
+            )  # 频率非常高，INFO 已有 groupx 摘要
             return  # 转给系统及其他插件
         # 6- 群名不在白名单中，中止处理
         if (
