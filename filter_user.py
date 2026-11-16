@@ -182,15 +182,17 @@ class FilterUser(FilterBase):
         ret = self._consume_tokens(account, wx_user, None, total_tokens, completion_tokens, replyMsg,cmsg)
         if ret:
             # 写入服务器返回的account到user remarkname中
-            if is_eth_address(ret["account"]) and account != ret["account"]:
+            # API 超时/403 时 ret 无 account/balanceAITokens，取值前先判存在
+            ret_account = ret.get("account") if isinstance(ret, dict) else None
+            if is_eth_address(ret_account) and account != ret_account:
                 pass
-                # rm.set_account(ret["account"])
+                # rm.set_account(ret_account)
                 # itchat.set_alias(user.UserName, rm.get_remark_name())
                 # user.update()
                 # itchat.dump_login_status()
 
-            balance = ret["balanceAITokens"]
-            if balance < -3000 or ret["success"] is False:
+            balance = ret.get("balanceAITokens")
+            if balance is None or balance < -3000 or ret.get("success") is False:
                 logger.warn(f"======>[IKnowFilter] consumeTokens fail {ret}")
                 
                 chat_billing_enabled = conf().get("chat_billing_enabled", False)

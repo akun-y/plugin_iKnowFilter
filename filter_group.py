@@ -271,14 +271,16 @@ class FilterGroup(FilterBase):
         )
         if ret:
             # 写入服务器返回的account到user remarkname中
-            if is_eth_address(ret["account"]) and account != ret["account"]:
-                self._set_contact_info({ 
+            # API 超时/403 时 ret 无 account/balanceAITokens，取值前先判存在
+            ret_account = ret.get("account") if isinstance(ret, dict) else None
+            if is_eth_address(ret_account) and account != ret_account:
+                self._set_contact_info({
                         **user,
-                        "account": ret["account"]
+                        "account": ret_account
                     })
 
-            balance = ret["balanceAITokens"]
-            if ret["success"] is False:
+            balance = ret.get("balanceAITokens")
+            if balance is None or ret.get("success") is False:
                 logger.warn(f"======>[filtGrp] consumeTokens fail {ret}")
                 #itchat.send_msg(msg, toUserName=to_user_id)
                 chat_billing_enabled = conf().get("chat_billing_enabled", False)
